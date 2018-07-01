@@ -1,15 +1,75 @@
 package main
 
-import _ "log"
+import (
+	"database/sql"
+	"encoding/json"
+	"github.com/julienschmidt/httprouter"
+	"net/http"
+)
+
+func StopsHandler(db *sql.DB) httprouter.Handle {
+	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		data, err := getAllStopNames(db)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(data)
+	})
+}
+
+func RoutesHandler(db *sql.DB) httprouter.Handle {
+	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		data, err := getAllRouteIDs(db)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(data)
+	})
+}
+
+func RoutesVariantsHandler(db *sql.DB) httprouter.Handle {
+	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		routeID := p.ByName("routeID")
+		data, err := getVariantsForRouteID(db, routeID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(data)
+	})
+}
 
 func main() {
-	db := openDB()
-	defer db.Close()
+	db, err := openDB()
+	if err != nil {
+		panic(err)
+	}
+	err = setGraphPath(db)
+	if err != nil {
+		panic(err)
+	}
 
-	setGraphPath(db)
-	getAllStopNames(db)
-	getAllRouteIDs(db)
-	getVariantsForRouteID(db, "122")
+	defer db.Close()
+	router := httprouter.New()
+	router.GET("/stops", StopsHandler(db))
+	router.GET("/routes", RoutesHandler(db))
+	router.GET("/routes/:routeID/variants", RoutesVariantsHandler(db))
+	http.ListenAndServe(":8080", router)
+
+	//getAllStopNames(db)
+	//getAllRouteIDs(db)
+	//getVariantsForRouteID(db, "122")
 
 	/*
 	   fmt.Println("# Inserting values")

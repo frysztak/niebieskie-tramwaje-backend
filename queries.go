@@ -19,7 +19,7 @@ const getAllRouteIDsQuery = `
     ORDER BY t.routeID;
 `
 
-const getVariantsForRouteIDQuery = `
+const getRouteVariantsByRouteIDQuery = `
 	MATCH (trip:Trip{routeID: {routeID}})-[:starts_at]->(st:StopTime)-[:happens_at]->(stop:Stop)
 	WITH trip.tripID as tripID, stop.name as firstStopName
 	MATCH (trip:Trip{tripID: tripID})-[:ends_at]->(st:StopTime)-[:happens_at]->(stop:Stop)
@@ -27,12 +27,12 @@ const getVariantsForRouteIDQuery = `
 	ORDER BY routeID;
 `
 
-const getVariantsForStopNameQuery = `
-	MATCH (st:StopTime)-[:happens_at]->(stop:Stop{name: '%s'})
+const getRouteVariantsByStopNameQuery = `
+	MATCH (st:StopTime)-[:happens_at]->(stop:Stop{name: {stopName}})
 	WITH st.tripID as tripID
 	MATCH (trip:Trip{tripID: tripID})-[:starts_at]-(st:StopTime)-[:happens_at]->(stop:Stop)
 	WITH trip.tripID as tripID, stop.name as firstStopName
 	MATCH (trip:Trip{tripID: tripID})-[:ends_at]-(st:StopTime)-[:happens_at]->(stop:Stop)
-	RETURN trip.routeID as routeID, collect(trip.tripID) as tripIDs, firstStopName, stop.name as lastStopName
+	RETURN trip.routeID as routeID, firstStopName, stop.name as lastStopName, collect(trip.tripID) as tripIDs
 	ORDER BY routeID;
 `

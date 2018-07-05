@@ -83,14 +83,14 @@ type RouteVariant struct {
 	TripIDs   []string
 }
 
-func getVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVariant, error) {
+func getRouteVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVariant, error) {
 	conn, err := driver.OpenNeo(URL)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 
-	stmt, err := conn.PrepareNeo(getVariantsForRouteIDQuery)
+	stmt, err := conn.PrepareNeo(getRouteVariantsByRouteIDQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -121,5 +121,46 @@ func getVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVariant, 
 	}
 
 	log.Printf(`Received %d variants for routeID "%s"`, len(variants), routeID)
+	return variants, nil
+}
+
+func getRouteVariantsByStopName(driver bolt.Driver, stopName string) ([]RouteVariant, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getRouteVariantsByStopNameQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{"stopName": stopName})
+	if err != nil {
+		return nil, err
+	}
+
+	var variants []RouteVariant
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return nil, err
+		} else if err != io.EOF {
+			routeID := row[0].(string)
+			firstStopName := row[1].(string)
+			lastStopName := row[2].(string)
+			tripIDs := row[3].([]interface{})
+
+			s := make([]string, len(tripIDs))
+			for i, v := range tripIDs {
+				s[i] = fmt.Sprint(v)
+			}
+			variants = append(variants, RouteVariant{routeID, firstStopName, lastStopName, s})
+		}
+	}
+
+	log.Printf(`Received %d variants for stop name "%s"`, len(variants), stopName)
 	return variants, nil
 }

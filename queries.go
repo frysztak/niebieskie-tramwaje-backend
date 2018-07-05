@@ -1,27 +1,38 @@
 package main
 
 const getAllStopNamesQuery = `
-	MATCH (s:stop)
-	RETURN DISTINCT s.stop_name
-	ORDER BY stop_name;
+	MATCH (s:Stop)
+    RETURN DISTINCT s.name
+    ORDER BY s.name;
 `
 
 const getAllRouteIDsQuery = `
-	MATCH (t:trip)
-	RETURN DISTINCT t.route_id,
-	CASE t.vehicle_id
-		WHEN 1  THEN true
-		WHEN 2  THEN true
-		WHEN 8  THEN true
-		WHEN 13 THEN true
-		ELSE false
-	END AS is_bus
-	ORDER BY route_id;
+	MATCH (t:Trip)
+    RETURN DISTINCT t.routeID,
+    CASE t.vehicleID
+        WHEN 1  THEN true
+        WHEN 2  THEN true
+        WHEN 8  THEN true
+        WHEN 13 THEN true
+        ELSE false
+    END AS is_bus
+    ORDER BY t.routeID;
 `
 
 const getVariantsForRouteIDQuery = `
-	MATCH (t:trip { route_id: '%s' })-[:stops_at]-(st: stop_time)-[:is_stop]-(s:stop)
-	WITH t, st.stop_sequence AS stop_sequence, s
-	ORDER BY stop_sequence ASC
-	RETURN t.trip_id, collect(s.stop_name) AS stop_names;
+	MATCH (trip:Trip{routeID: {routeID}})-[:starts_at]->(st:StopTime)-[:happens_at]->(stop:Stop)
+	WITH trip.tripID as tripID, stop.name as firstStopName
+	MATCH (trip:Trip{tripID: tripID})-[:ends_at]->(st:StopTime)-[:happens_at]->(stop:Stop)
+	RETURN trip.routeID as routeID, firstStopName, stop.name as lastStopName, collect(trip.tripID) as tripIDs
+	ORDER BY routeID;
+`
+
+const getVariantsForStopNameQuery = `
+	MATCH (st:StopTime)-[:happens_at]->(stop:Stop{name: '%s'})
+	WITH st.tripID as tripID
+	MATCH (trip:Trip{tripID: tripID})-[:starts_at]-(st:StopTime)-[:happens_at]->(stop:Stop)
+	WITH trip.tripID as tripID, stop.name as firstStopName
+	MATCH (trip:Trip{tripID: tripID})-[:ends_at]-(st:StopTime)-[:happens_at]->(stop:Stop)
+	RETURN trip.routeID as routeID, collect(trip.tripID) as tripIDs, firstStopName, stop.name as lastStopName
+	ORDER BY routeID;
 `

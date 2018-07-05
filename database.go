@@ -1,51 +1,44 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
-	_ "github.com/bitnine-oss/agensgraph-golang"
-	_ "github.com/lib/pq"
+	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
+	"io"
 	"log"
-	"strings"
 )
 
 const (
-	DB_USER     = "sebastian"
-	DB_PASSWORD = ""
-	DB_NAME     = "wroclaw_gtfs"
-	GRAPH_NAME  = "wroclaw"
+	URL = "bolt://neo4j:krowa@localhost:7687"
 )
 
-func openDB() (*sql.DB, error) {
-	dbinfo := fmt.Sprintf("user=%s dbname=%s sslmode=disable",
-		DB_USER, DB_NAME)
-	log.Print("Opening database...")
-	return sql.Open("postgres", dbinfo)
+func openDB() bolt.Driver {
+	log.Print("Creating driver...")
+	return bolt.NewDriver()
 }
 
-func setGraphPath(db *sql.DB) error {
-	q := fmt.Sprintf(`SET graph_path = %s`, GRAPH_NAME)
-	_, err := db.Exec(q)
-	return err
-}
+func getAllStopNames(driver bolt.Driver) ([]string, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
 
-func getAllStopNames(db *sql.DB) ([]string, error) {
-	rows, err := db.Query(getAllStopNamesQuery)
+	rows, err := conn.QueryNeo(getAllStopNamesQuery, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	stop_names := make([]string, 0)
-	for rows.Next() {
-		var stop_name string
-		err = rows.Scan(&stop_name)
-		if err != nil {
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
 			return nil, err
+		} else if err != io.EOF {
+			stop_names = append(stop_names, row[0].(string))
 		}
-
-		stop_name = strings.Replace(stop_name, `"`, ``, -1)
-		stop_names = append(stop_names, stop_name)
 	}
+
 	log.Printf(`Received %d stop names`, len(stop_names))
 	return stop_names, nil
 }
@@ -55,71 +48,76 @@ type Route struct {
 	IsBus bool
 }
 
-func getAllRouteIDs(db *sql.DB) ([]Route, error) {
-	rows, err := db.Query(getAllRouteIDsQuery)
+func getAllRouteIDs(driver bolt.Driver) ([]Route, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	rows, err := conn.QueryNeo(getAllRouteIDsQuery, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	routes := make([]Route, 0)
-	for rows.Next() {
-		var route_id string
-		var is_bus bool
-		err = rows.Scan(&route_id, &is_bus)
-		if err != nil {
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
 			return nil, err
+		} else if err != io.EOF {
+			route := Route{row[0].(string), row[1].(bool)}
+			routes = append(routes, route)
 		}
-		route_id = strings.Replace(route_id, `"`, ``, -1)
-		routes = append(routes, Route{route_id, is_bus})
 	}
+
 	log.Printf(`Received %d route IDs`, len(routes))
-	log.Println(routes[0])
 	return routes, nil
 }
 
 type RouteVariant struct {
+	RouteID   string
 	FirstStop string
 	LastStop  string
 	TripIDs   []string
 }
 
-func getVariantsForRouteID(db *sql.DB, routeID string) ([]RouteVariant, error) {
-	q := fmt.Sprintf(getVariantsForRouteIDQuery, routeID)
-	rows, err := db.Query(q)
+func getVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVariant, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getVariantsForRouteIDQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	stopNamesMap := make(map[string][]string)
-	for rows.Next() {
-		var route_id string
-		var stop_names string
-		err = rows.Scan(&route_id, &stop_names)
-		if err != nil {
-			return nil, err
-		}
-
-		route_id = strings.Replace(route_id, `"`, ``, -1)
-		if val, ok := stopNamesMap[stop_names]; ok {
-			stopNamesMap[stop_names] = append(val, route_id)
-		} else {
-			stopNamesMap[stop_names] = []string{route_id}
-		}
+	rows, err := stmt.QueryNeo(map[string]interface{}{"routeID": routeID})
+	if err != nil {
+		return nil, err
 	}
 
 	var variants []RouteVariant
-	for stop_names, tripIDs := range stopNamesMap {
-		stop_names = stop_names[1 : len(stop_names)-2] // remove trailing '[' ']'
-		s := strings.Split(stop_names, ",")
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return nil, err
+		} else if err != io.EOF {
+			routeID := row[0].(string)
+			firstStopName := row[1].(string)
+			lastStopName := row[2].(string)
+			tripIDs := row[3].([]interface{})
 
-		processedStopNames := []string{}
-		for _, stop_name := range s {
-			stop_name = strings.Replace(strings.TrimSpace(stop_name), `"`, ``, -1)
-			processedStopNames = append(processedStopNames, stop_name)
+			s := make([]string, len(tripIDs))
+			for i, v := range tripIDs {
+				s[i] = fmt.Sprint(v)
+			}
+			variants = append(variants, RouteVariant{routeID, firstStopName, lastStopName, s})
 		}
-		first := processedStopNames[0]
-		last := processedStopNames[len(processedStopNames)-1]
-		variants = append(variants, RouteVariant{first, last, tripIDs})
 	}
 
 	log.Printf(`Received %d variants for routeID "%s"`, len(variants), routeID)

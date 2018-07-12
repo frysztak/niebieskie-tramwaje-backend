@@ -2,10 +2,23 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
 )
+
+var ( // TODO: make const somehow
+	maxAge            = 60 * 60 * 24 * 7 // 7 days
+	cacheControlValue = fmt.Sprintf("max-age:%d, public", maxAge)
+)
+
+func wrapJSON(name string, item interface{}) ([]byte, error) {
+	wrapped := map[string]interface{}{
+		name: item,
+	}
+	return json.Marshal(wrapped)
+}
 
 func StopsHandler(driver bolt.Driver) httprouter.Handle {
 	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -14,10 +27,16 @@ func StopsHandler(driver bolt.Driver) httprouter.Handle {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+		wrappedData, err := wrapJSON("stopNames", data)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", cacheControlValue)
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(data)
+		w.Write(wrappedData)
 	})
 }
 
@@ -29,7 +48,9 @@ func RoutesHandler(driver bolt.Driver) httprouter.Handle {
 			return
 		}
 
+		// TODO: wrap data
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", cacheControlValue)
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(data)
 	})
@@ -44,9 +65,10 @@ func RoutesVariantsByIdHandler(driver bolt.Driver) httprouter.Handle {
 			return
 		}
 
+		wrappedData := map[string][]RouteVariant{"RouteVariants": data}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(data)
+		w.Header().Set("Cache-Control", cacheControlValue)
+		json.NewEncoder(w).Encode(wrappedData)
 	})
 }
 
@@ -58,10 +80,16 @@ func RoutesVariantsByStopNameHandler(driver bolt.Driver) httprouter.Handle {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+		wrappedData, err := wrapJSON("routeVariants", data)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", cacheControlValue)
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(data)
+		w.Write(wrappedData)
 	})
 }
 

@@ -78,6 +78,7 @@ func getAllRouteIDs(driver bolt.Driver) ([]Route, error) {
 
 type RouteVariant struct {
 	RouteID   string
+	IsBus     bool
 	FirstStop string
 	LastStop  string
 	TripIDs   []string
@@ -108,15 +109,16 @@ func getRouteVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVari
 			return nil, err
 		} else if err != io.EOF {
 			routeID := row[0].(string)
-			firstStopName := row[1].(string)
-			lastStopName := row[2].(string)
-			tripIDs := row[3].([]interface{})
+			isBus := row[1].(bool)
+			firstStopName := row[2].(string)
+			lastStopName := row[3].(string)
+			tripIDs := row[4].([]interface{})
 
 			s := make([]string, len(tripIDs))
 			for i, v := range tripIDs {
 				s[i] = fmt.Sprint(v)
 			}
-			variants = append(variants, RouteVariant{routeID, firstStopName, lastStopName, s})
+			variants = append(variants, RouteVariant{routeID, isBus, firstStopName, lastStopName, s})
 		}
 	}
 
@@ -149,15 +151,16 @@ func getRouteVariantsByStopName(driver bolt.Driver, stopName string) ([]RouteVar
 			return nil, err
 		} else if err != io.EOF {
 			routeID := row[0].(string)
-			firstStopName := row[1].(string)
-			lastStopName := row[2].(string)
-			tripIDs := row[3].([]interface{})
+			isBus := row[1].(bool)
+			firstStopName := row[2].(string)
+			lastStopName := row[3].(string)
+			tripIDs := row[4].([]interface{})
 
 			s := make([]string, len(tripIDs))
 			for i, v := range tripIDs {
 				s[i] = fmt.Sprint(v)
 			}
-			variants = append(variants, RouteVariant{routeID, firstStopName, lastStopName, s})
+			variants = append(variants, RouteVariant{routeID, isBus, firstStopName, lastStopName, s})
 		}
 	}
 

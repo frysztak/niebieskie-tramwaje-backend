@@ -2,15 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 	"github.com/julienschmidt/httprouter"
 	"net/http"
-)
-
-var ( // TODO: make const somehow
-	maxAge            = 60 * 60 * 24 * 7 // 7 days
-	cacheControlValue = fmt.Sprintf("max-age:%d, public", maxAge)
 )
 
 func wrapJSON(name string, item interface{}) ([]byte, error) {
@@ -34,8 +28,8 @@ func StopsHandler(driver bolt.Driver) httprouter.Handle {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", cacheControlValue)
-		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
 		w.Write(wrappedData)
 	})
 }
@@ -50,8 +44,8 @@ func RoutesHandler(driver bolt.Driver) httprouter.Handle {
 
 		// TODO: wrap data
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", cacheControlValue)
-		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	})
 }
@@ -67,7 +61,7 @@ func RoutesVariantsByIdHandler(driver bolt.Driver) httprouter.Handle {
 
 		wrappedData := map[string][]RouteVariant{"RouteVariants": data}
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", cacheControlValue)
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		json.NewEncoder(w).Encode(wrappedData)
 	})
 }
@@ -87,8 +81,8 @@ func RoutesVariantsByStopNameHandler(driver bolt.Driver) httprouter.Handle {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", cacheControlValue)
-		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
 		w.Write(wrappedData)
 	})
 }

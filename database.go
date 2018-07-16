@@ -182,15 +182,15 @@ type TimeTable struct {
 }
 
 func (tt TimeTable) sort() {
-	sort.Slice(tt.Weekdays, func(i, j int) bool {
-		return tt.Weekdays[i].ArrivalTime < tt.Weekdays[j].ArrivalTime
-	})
-	sort.Slice(tt.Saturdays, func(i, j int) bool {
-		return tt.Saturdays[i].ArrivalTime < tt.Saturdays[j].ArrivalTime
-	})
-	sort.Slice(tt.Sundays, func(i, j int) bool {
-		return tt.Sundays[i].ArrivalTime < tt.Sundays[j].ArrivalTime
-	})
+	type Predicate func(i, j int) bool
+	predFactory := func(slice []TimeTableEntry) Predicate {
+		return func(i, j int) bool {
+			return slice[i].ArrivalTime < slice[j].ArrivalTime
+		}
+	}
+	sort.Slice(tt.Weekdays, predFactory(tt.Weekdays))
+	sort.Slice(tt.Saturdays, predFactory(tt.Saturdays))
+	sort.Slice(tt.Sundays, predFactory(tt.Sundays))
 }
 
 func getTimetable(driver bolt.Driver, routeID string, atStopName string, fromStopName string, toStopName string) (TimeTable, error) {

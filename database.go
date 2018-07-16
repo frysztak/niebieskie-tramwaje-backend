@@ -176,6 +176,10 @@ type TimeTableEntry struct {
 }
 
 type TimeTable struct {
+	RouteID   string
+	AtStop    string
+	FromStop  string
+	ToStop    string
 	Weekdays  []TimeTableEntry
 	Saturdays []TimeTableEntry
 	Sundays   []TimeTableEntry
@@ -215,6 +219,11 @@ func getTimetable(driver bolt.Driver, routeID string, atStopName string, fromSto
 	}
 
 	var timeTable TimeTable
+	timeTable.RouteID = routeID
+	timeTable.AtStop = atStopName
+	timeTable.FromStop = fromStopName
+	timeTable.ToStop = toStopName
+
 	for err == nil {
 		var row []interface{}
 		row, _, err = rows.NextNeo()

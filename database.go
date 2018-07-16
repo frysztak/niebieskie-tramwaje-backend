@@ -5,6 +5,7 @@ import (
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 	"io"
 	"log"
+	"sort"
 )
 
 const (
@@ -166,4 +167,86 @@ func getRouteVariantsByStopName(driver bolt.Driver, stopName string) ([]RouteVar
 
 	log.Printf(`Received %d variants for stop name "%s"`, len(variants), stopName)
 	return variants, nil
+}
+
+type TimeTableEntry struct {
+	TripID        string
+	ArrivalTime   string
+	DepartureTime string
+}
+
+type TimeTable struct {
+	Weekdays  []TimeTableEntry
+	Saturdays []TimeTableEntry
+	Sundays   []TimeTableEntry
+}
+
+func (tt TimeTable) sort() {
+	sort.Slice(tt.Weekdays, func(i, j int) bool {
+		return tt.Weekdays[i].ArrivalTime < tt.Weekdays[j].ArrivalTime
+	})
+	sort.Slice(tt.Saturdays, func(i, j int) bool {
+		return tt.Saturdays[i].ArrivalTime < tt.Saturdays[j].ArrivalTime
+	})
+	sort.Slice(tt.Sundays, func(i, j int) bool {
+		return tt.Sundays[i].ArrivalTime < tt.Sundays[j].ArrivalTime
+	})
+}
+
+func getTimetable(driver bolt.Driver, routeID string, atStopName string, fromStopName string, toStopName string) (TimeTable, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return TimeTable{}, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getTimetableQuery)
+	if err != nil {
+		return TimeTable{}, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"routeID":      routeID,
+		"atStopName":   atStopName,
+		"fromStopName": fromStopName,
+		"toStopName":   toStopName})
+	if err != nil {
+		return TimeTable{}, err
+	}
+
+	var timeTable TimeTable
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return TimeTable{}, err
+		} else if err != io.EOF {
+			tripID := row[0].(string)
+			arrivalTime := row[1].(string)
+			departureTime := row[2].(string)
+
+			entry := TimeTableEntry{tripID, arrivalTime, departureTime}
+
+			switch prefix := tripID[0]; prefix {
+			case '6': // Monday-Thursday
+				timeTable.Weekdays = append(timeTable.Weekdays, entry)
+			case '8': // Friday
+				// ignore.
+				// for some reason, in Wrocław GTFS they make distinction between
+				// Mondays-Thurdays and Fridays. To the best of my knowledge,
+				// there is no difference whatsoever.
+			case '3':
+				timeTable.Saturdays = append(timeTable.Saturdays, entry)
+			case '4':
+				timeTable.Sundays = append(timeTable.Sundays, entry)
+			default:
+				panic(fmt.Sprintf("Unknown prefix: %d", prefix))
+			}
+		}
+	}
+
+	timeTable.sort()
+
+	log.Printf(`Received %d time table entries for route ID "%s" and stop name "%s"`, len(timeTable.Weekdays)+len(timeTable.Saturdays)+len(timeTable.Sundays), routeID, atStopName)
+	return timeTable, nil
 }

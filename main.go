@@ -87,6 +87,31 @@ func RoutesVariantsByStopNameHandler(driver bolt.Driver) httprouter.Handle {
 	})
 }
 
+func RoutesTimeTableHandler(driver bolt.Driver) httprouter.Handle {
+	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		routeID := p.ByName("routeID")
+		atStopName := p.ByName("atStopName")
+		fromStopName := p.ByName("fromStopName")
+		toStopName := p.ByName("toStopName")
+
+		data, err := getTimetable(driver, routeID, atStopName, fromStopName, toStopName)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
+	})
+}
+
 func main() {
 	driver := openDB()
 	router := httprouter.New()
@@ -94,6 +119,7 @@ func main() {
 	router.GET("/routes", RoutesHandler(driver))
 	router.GET("/routes/variants/id/:routeID", RoutesVariantsByIdHandler(driver))
 	router.GET("/routes/variants/stop/:stopName", RoutesVariantsByStopNameHandler(driver))
+	router.GET("/route/:routeID/timetable/at/:atStopName/from/:fromStopName/to/:toStopName", RoutesTimeTableHandler(driver))
 	http.ListenAndServe(":8080", router)
 }
 

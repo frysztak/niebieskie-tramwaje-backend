@@ -58,3 +58,18 @@ const getRouteVariantsByStopNameQuery = `
 		collect(trip.tripID) as tripIDs
 	ORDER BY routeID;
 `
+const getTimetableQuery = `
+	MATCH (t:Trip{routeID: {routeID}})-[:starts_at]-(:StopTime)-[:happens_at]->(stop:Stop {name: {fromStopName}})
+	WITH collect(t.tripID) as firstTripIDs
+	MATCH (t:Trip{routeID: {routeID}})-[:ends_at]-(:StopTime)-[:happens_at]->(stop:Stop {name: {toStopName}})
+	WITH apoc.coll.intersection(firstTripIDs, collect(t.tripID)) as tripIDs
+
+	MATCH (s:Stop {name: {atStopName}})
+	WITH collect(s.stopID) as stopIDs, tripIDs
+	MATCH (st:StopTime)
+	WHERE st.tripID IN tripIDs AND st.stopID in stopIDs
+	RETURN
+		st.tripID as tripID,
+		st.arrivalTime as arrivalTime,
+		st.departureTime as departureTime;
+`

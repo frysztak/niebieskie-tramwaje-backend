@@ -259,3 +259,54 @@ func getTimetable(driver bolt.Driver, routeID string, atStopName string, fromSto
 	log.Printf(`Received %d time table entries for route ID "%s" and stop name "%s"`, len(timeTable.Weekdays)+len(timeTable.Saturdays)+len(timeTable.Sundays), routeID, atStopName)
 	return timeTable, nil
 }
+
+type RouteInfo struct {
+	RouteID     string
+	TypeID      int
+	ValidFrom   string
+	ValidUntil  string
+	AgencyName  string
+	AgencyUrl   string
+	AgencyPhone string
+}
+
+func getRouteInfo(driver bolt.Driver, routeID string) (RouteInfo, error) {
+	var routeInfo RouteInfo
+
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return routeInfo, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getRouteInfoQuery)
+	if err != nil {
+		return routeInfo, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{"routeID": routeID})
+	if err != nil {
+		return routeInfo, err
+	}
+
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return routeInfo, err
+		} else if err != io.EOF {
+			routeID := row[0].(string)
+			typeID := row[1].(int64)
+			validFrom := row[2].(string)
+			validUntil := row[3].(string)
+			agencyName := row[4].(string)
+			agencyUrl := row[5].(string)
+			agencyPhone := row[6].(string)
+
+			routeInfo = RouteInfo{routeID, int(typeID), validFrom, validUntil, agencyName, agencyUrl, agencyPhone}
+		}
+	}
+
+	log.Printf(`Received route info for route id "%s"`, routeID)
+	return routeInfo, nil
+}

@@ -73,3 +73,17 @@ const getTimetableQuery = `
 		st.arrivalTime as arrivalTime,
 		st.departureTime as departureTime;
 `
+
+const getRouteInfoQuery = `
+	MATCH (route:Route {routeID: {routeID}})
+	WITH route
+	MATCH (agency:Agency {agencyID: route.agencyID})
+	RETURN
+		route.routeID as routeID,
+	    route.typeID as typeID,
+	    route.validFrom as validFrom,
+	    route.validUntil as validUntil,
+	    agency.name as agencyName,
+	    agency.url as agencyUrl,
+	    agency.phone as agencyPhone;
+`

@@ -310,3 +310,43 @@ func getRouteInfo(driver bolt.Driver, routeID string) (RouteInfo, error) {
 	log.Printf(`Received route info for route id "%s"`, routeID)
 	return routeInfo, nil
 }
+
+type RouteDirections struct {
+	RouteID    string
+	Directions []string
+}
+
+func getRouteDirections(driver bolt.Driver, routeID string) (RouteDirections, error) {
+	var routeDirections RouteDirections
+	routeDirections.RouteID = routeID
+
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return routeDirections, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getRouteDirectionsQuery)
+	if err != nil {
+		return routeDirections, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{"routeID": routeID})
+	if err != nil {
+		return routeDirections, err
+	}
+
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return routeDirections, err
+		} else if err != io.EOF {
+			direction := row[0].(string)
+			routeDirections.Directions = append(routeDirections.Directions, direction)
+		}
+	}
+
+	log.Printf(`Received %s route directions for route id "%s"`, len(routeDirections.Directions), routeID)
+	return routeDirections, nil
+}

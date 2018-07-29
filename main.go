@@ -120,7 +120,6 @@ func RouteInfoHandler(driver bolt.Driver) httprouter.Handle {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		wrappedData, err := wrapJSON("routeInfo", data)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -129,7 +128,27 @@ func RouteInfoHandler(driver bolt.Driver) httprouter.Handle {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		w.WriteHeader(http.StatusOK)
-		w.Write(wrappedData)
+		json.NewEncoder(w).Encode(data)
+	})
+}
+
+func RouteDirectionsHandler(driver bolt.Driver) httprouter.Handle {
+	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		routeID := p.ByName("routeID")
+		data, err := getRouteDirections(driver, routeID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
 	})
 }
 
@@ -142,6 +161,7 @@ func main() {
 	router.GET("/routes/variants/stop/:stopName", RoutesVariantsByStopNameHandler(driver))
 	router.GET("/route/:routeID/timetable/at/:atStopName/from/:fromStopName/to/:toStopName", RoutesTimeTableHandler(driver))
 	router.GET("/route/:routeID/info", RouteInfoHandler(driver))
+	router.GET("/route/:routeID/directions", RouteDirectionsHandler(driver))
 	http.ListenAndServe(":8080", router)
 }
 

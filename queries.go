@@ -58,6 +58,14 @@ const getRouteVariantsByStopNameQuery = `
 		collect(trip.tripID) as tripIDs
 	ORDER BY routeID;
 `
+
+const getRouteDirectionsQuery = `
+	MATCH (t:Trip {routeID: {routeID}})
+	WITH t.headsign as headsign, count(t.tripID) as cnt
+	ORDER BY cnt DESC
+	RETURN headsign
+`
+
 const getTimetableQuery = `
 	MATCH (t:Trip{routeID: {routeID}})-[:starts_at]-(:StopTime)-[:happens_at]->(stop:Stop {name: {fromStopName}})
 	WITH collect(t.tripID) as firstTripIDs

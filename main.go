@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gorilla/mux"
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
-	"github.com/julienschmidt/httprouter"
 	"net/http"
+	"net/url"
 )
 
 func wrapJSON(name string, item interface{}) ([]byte, error) {
@@ -14,8 +15,10 @@ func wrapJSON(name string, item interface{}) ([]byte, error) {
 	return json.Marshal(wrapped)
 }
 
-func StopsHandler(driver bolt.Driver) httprouter.Handle {
-	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+type Handler func(w http.ResponseWriter, r *http.Request)
+
+func StopsHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := getAllStopNames(driver)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -31,11 +34,11 @@ func StopsHandler(driver bolt.Driver) httprouter.Handle {
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		w.WriteHeader(http.StatusOK)
 		w.Write(wrappedData)
-	})
+	}
 }
 
-func RoutesHandler(driver bolt.Driver) httprouter.Handle {
-	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func RoutesHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := getAllRouteIDs(driver)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -47,12 +50,18 @@ func RoutesHandler(driver bolt.Driver) httprouter.Handle {
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
-	})
+	}
 }
 
-func RoutesVariantsByIdHandler(driver bolt.Driver) httprouter.Handle {
-	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		routeID := p.ByName("routeID")
+func RoutesVariantsByIdHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		routeID, err := url.QueryUnescape(vars["routeID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
 		data, err := getRouteVariantsForRouteID(driver, routeID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -63,12 +72,18 @@ func RoutesVariantsByIdHandler(driver bolt.Driver) httprouter.Handle {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		json.NewEncoder(w).Encode(wrappedData)
-	})
+	}
 }
 
-func RoutesVariantsByStopNameHandler(driver bolt.Driver) httprouter.Handle {
-	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		stopName := p.ByName("stopName")
+func RoutesVariantsByStopNameHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		stopName, err := url.QueryUnescape(vars["stopName"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
 		data, err := getRouteVariantsByStopName(driver, stopName)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -84,17 +99,31 @@ func RoutesVariantsByStopNameHandler(driver bolt.Driver) httprouter.Handle {
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		w.WriteHeader(http.StatusOK)
 		w.Write(wrappedData)
-	})
+	}
 }
 
-func RoutesTimeTableHandler(driver bolt.Driver) httprouter.Handle {
-	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		routeID := p.ByName("routeID")
-		atStopName := p.ByName("atStopName")
-		fromStopName := p.ByName("fromStopName")
-		toStopName := p.ByName("toStopName")
+func RoutesTimeTableHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		routeID, err := url.QueryUnescape(vars["routeID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 
-		data, err := getTimetable(driver, routeID, atStopName, fromStopName, toStopName)
+		stopName, err := url.QueryUnescape(vars["stopName"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		direction, err := url.QueryUnescape(vars["direction"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		data, err := getTimetable(driver, routeID, stopName, direction)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -109,37 +138,69 @@ func RoutesTimeTableHandler(driver bolt.Driver) httprouter.Handle {
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonData)
-	})
+	}
 }
 
-func RouteInfoHandler(driver bolt.Driver) httprouter.Handle {
-	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		routeID := p.ByName("routeID")
+func RouteInfoHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		routeID, err := url.QueryUnescape(vars["routeID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
 		data, err := getRouteInfo(driver, routeID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
-	})
+	}
 }
 
-func RouteDirectionsHandler(driver bolt.Driver) httprouter.Handle {
-	return httprouter.Handle(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		routeID := p.ByName("routeID")
+func RouteDirectionsHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		routeID, err := url.QueryUnescape(vars["routeID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
 		data, err := getRouteDirections(driver, routeID)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
+	}
+}
+
+func RouteDirectionsThroughStopHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		routeID, err := url.QueryUnescape(vars["routeID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		stopName, err := url.QueryUnescape(vars["stopName"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		data, err := getRouteDirectionsThroughStop(driver, routeID, stopName)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -149,19 +210,43 @@ func RouteDirectionsHandler(driver bolt.Driver) httprouter.Handle {
 		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
-	})
+	}
+}
+
+func TripTimelineHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		tripID, err := url.QueryUnescape(vars["tripID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		data, err := getTripTimeline(driver, tripID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
+	}
 }
 
 func main() {
 	driver := openDB()
-	router := httprouter.New()
-	router.GET("/stops", StopsHandler(driver))
-	router.GET("/routes", RoutesHandler(driver))
-	router.GET("/routes/variants/id/:routeID", RoutesVariantsByIdHandler(driver))
-	router.GET("/routes/variants/stop/:stopName", RoutesVariantsByStopNameHandler(driver))
-	router.GET("/route/:routeID/timetable/at/:atStopName/from/:fromStopName/to/:toStopName", RoutesTimeTableHandler(driver))
-	router.GET("/route/:routeID/info", RouteInfoHandler(driver))
-	router.GET("/route/:routeID/directions", RouteDirectionsHandler(driver))
+	router := mux.NewRouter().UseEncodedPath()
+	router.HandleFunc("/stops", StopsHandler(driver))
+	router.HandleFunc("/routes", RoutesHandler(driver))
+	router.HandleFunc("/routes/variants/id/{routeID}", RoutesVariantsByIdHandler(driver))
+	router.HandleFunc("/routes/variants/stop/{stopName}", RoutesVariantsByStopNameHandler(driver))
+	router.HandleFunc("/route/{routeID}/timetable/at/{stopName}/direction/{direction}", RoutesTimeTableHandler(driver))
+	router.HandleFunc("/route/{routeID}/info", RouteInfoHandler(driver))
+	router.HandleFunc("/route/{routeID}/directions", RouteDirectionsHandler(driver))
+	router.HandleFunc("/route/{routeID}/directions/through/{stopName}", RouteDirectionsThroughStopHandler(driver))
+	router.HandleFunc("/trip/{tripID}/timeline", TripTimelineHandler(driver))
 	http.ListenAndServe(":8080", router)
 }
 

@@ -177,9 +177,8 @@ type TimeTableEntry struct {
 
 type TimeTable struct {
 	RouteID   string
-	AtStop    string
-	FromStop  string
-	ToStop    string
+	StopName  string
+	Direction string
 	Weekdays  []TimeTableEntry
 	Saturdays []TimeTableEntry
 	Sundays   []TimeTableEntry
@@ -197,7 +196,7 @@ func (tt TimeTable) sort() {
 	sort.Slice(tt.Sundays, predFactory(tt.Sundays))
 }
 
-func getTimetable(driver bolt.Driver, routeID string, atStopName string, fromStopName string, toStopName string) (TimeTable, error) {
+func getTimetable(driver bolt.Driver, routeID string, stopName string, direction string) (TimeTable, error) {
 	conn, err := driver.OpenNeo(URL)
 	if err != nil {
 		return TimeTable{}, err
@@ -210,19 +209,17 @@ func getTimetable(driver bolt.Driver, routeID string, atStopName string, fromSto
 	}
 
 	rows, err := stmt.QueryNeo(map[string]interface{}{
-		"routeID":      routeID,
-		"atStopName":   atStopName,
-		"fromStopName": fromStopName,
-		"toStopName":   toStopName})
+		"routeID":   routeID,
+		"stopName":  stopName,
+		"direction": direction})
 	if err != nil {
 		return TimeTable{}, err
 	}
 
 	var timeTable TimeTable
 	timeTable.RouteID = routeID
-	timeTable.AtStop = atStopName
-	timeTable.FromStop = fromStopName
-	timeTable.ToStop = toStopName
+	timeTable.StopName = stopName
+	timeTable.Direction = direction
 
 	for err == nil {
 		var row []interface{}
@@ -256,7 +253,7 @@ func getTimetable(driver bolt.Driver, routeID string, atStopName string, fromSto
 
 	timeTable.sort()
 
-	log.Printf(`Received %d time table entries for route ID "%s" and stop name "%s"`, len(timeTable.Weekdays)+len(timeTable.Saturdays)+len(timeTable.Sundays), routeID, atStopName)
+	log.Printf(`Received %d time table entries for route ID "%s", stop name "%s" and direction "%s"`, len(timeTable.Weekdays)+len(timeTable.Saturdays)+len(timeTable.Sundays), routeID, stopName, direction)
 	return timeTable, nil
 }
 
@@ -347,6 +344,90 @@ func getRouteDirections(driver bolt.Driver, routeID string) (RouteDirections, er
 		}
 	}
 
-	log.Printf(`Received %s route directions for route id "%s"`, len(routeDirections.Directions), routeID)
+	log.Printf(`Received %d route directions for route id "%s"`, len(routeDirections.Directions), routeID)
 	return routeDirections, nil
+}
+
+func getRouteDirectionsThroughStop(driver bolt.Driver, routeID string, stopName string) (RouteDirections, error) {
+	var routeDirections RouteDirections
+	routeDirections.RouteID = routeID
+
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return routeDirections, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getRouteDirectionsThroughStopQuery)
+	if err != nil {
+		return routeDirections, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"routeID":  routeID,
+		"stopName": stopName})
+	if err != nil {
+		return routeDirections, err
+	}
+
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return routeDirections, err
+		} else if err != io.EOF {
+			direction := row[0].(string)
+			routeDirections.Directions = append(routeDirections.Directions, direction)
+		}
+	}
+
+	log.Printf(`Received %d route directions for route id "%s" going through stop "%s"`, len(routeDirections.Directions), routeID, stopName)
+	return routeDirections, nil
+}
+
+type TripTimelineEntry struct {
+	StopName      string
+	DepartureTime string
+}
+
+type TripTimeline struct {
+	TripID   string
+	Timeline []TripTimelineEntry
+}
+
+func getTripTimeline(driver bolt.Driver, tripID string) (TripTimeline, error) {
+	var timeline TripTimeline
+	timeline.TripID = tripID
+
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return timeline, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getTripTimelineQuery)
+	if err != nil {
+		return timeline, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"tripID": tripID})
+	if err != nil {
+		return timeline, err
+	}
+
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return timeline, err
+		} else if err != io.EOF {
+			stopName := row[0].(string)
+			departureTime := row[1].(string)
+			timeline.Timeline = append(timeline.Timeline, TripTimelineEntry{stopName, departureTime})
+		}
+	}
+
+	log.Printf(`Received %d timeline entries for trip id "%s"`, len(timeline.Timeline), tripID)
+	return timeline, nil
 }

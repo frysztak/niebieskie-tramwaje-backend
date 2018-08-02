@@ -66,13 +66,22 @@ const getRouteDirectionsQuery = `
 	RETURN headsign
 `
 
-const getTimetableQuery = `
-	MATCH (t:Trip{routeID: {routeID}})-[:starts_at]-(:StopTime)-[:happens_at]->(stop:Stop {name: {fromStopName}})
-	WITH collect(t.tripID) as firstTripIDs
-	MATCH (t:Trip{routeID: {routeID}})-[:ends_at]-(:StopTime)-[:happens_at]->(stop:Stop {name: {toStopName}})
-	WITH apoc.coll.intersection(firstTripIDs, collect(t.tripID)) as tripIDs
+const getRouteDirectionsThroughStopQuery = `
+	MATCH (st: StopTime)-[:happens_at]-(s: Stop{name: {stopName}})
+	WITH collect(st.tripID) as tripIDs
 
-	MATCH (s:Stop {name: {atStopName}})
+	MATCH (t:Trip {routeID: {routeID}})
+	WHERE t.tripID in tripIDs
+	WITH t.headsign as headsign, count(t.tripID) as cnt
+	ORDER BY cnt DESC
+	RETURN headsign
+`
+
+const getTimetableQuery = `
+	MATCH (t:Trip{routeID: {routeID}})-[:ends_at]-(:StopTime)-[:happens_at]->(stop:Stop {name: {direction}})
+	WITH collect(t.tripID) as tripIDs
+
+	MATCH (s:Stop {name: {stopName}})
 	WITH collect(s.stopID) as stopIDs, tripIDs
 	MATCH (st:StopTime)
 	WHERE st.tripID IN tripIDs AND st.stopID in stopIDs
@@ -94,4 +103,15 @@ const getRouteInfoQuery = `
 	    agency.name as agencyName,
 	    agency.url as agencyUrl,
 	    agency.phone as agencyPhone;
+`
+
+const getTripTimelineQuery = `
+	MATCH p=(t:Trip {tripID: {tripID}})-[:starts_at]-(:StopTime)-[:next*]-(:StopTime)-[:ends_at]-(t)
+	WITH filter(n in nodes(p) WHERE EXISTS(n.stopID)) as nodes
+	WITH extract(n in nodes | [n.stopID, n.departureTime]) AS stopIDsAndTime
+	UNWIND stopIDsAndTime as tuples
+	WITH tuples[0] as stopID, tuples[1] as departureTime
+
+	MATCH (s:Stop {stopID: stopID})
+	RETURN s.name as stopName, departureTime
 `

@@ -431,3 +431,43 @@ func getTripTimeline(driver bolt.Driver, tripID string) (TripTimeline, error) {
 	log.Printf(`Received %d timeline entries for trip id "%s"`, len(timeline.Timeline), tripID)
 	return timeline, nil
 }
+
+type StopsForRoute struct {
+	RouteID   string
+	StopNames []string
+}
+
+func getStopsForRouteID(driver bolt.Driver, routeID string) (StopsForRoute, error) {
+	var data StopsForRoute
+	data.RouteID = routeID
+
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return data, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getStopsForRouteIDQuery)
+	if err != nil {
+		return data, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{"routeID": routeID})
+	if err != nil {
+		return data, err
+	}
+
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return data, err
+		} else if err != io.EOF {
+			stopName := row[0].(string)
+			data.StopNames = append(data.StopNames, stopName)
+		}
+	}
+
+	log.Printf(`Received %d stop names for route id "%s"`, len(data.StopNames), routeID)
+	return data, nil
+}

@@ -115,3 +115,12 @@ const getTripTimelineQuery = `
 	MATCH (s:Stop {stopID: stopID})
 	RETURN s.name as stopName, departureTime
 `
+
+const getStopsForRouteIDQuery = `
+	MATCH (t:Trip {routeID: {routeID}})
+	WITH collect(t.tripID) as tripIDs
+	MATCH (st: StopTime)-[:happens_at]-(s:Stop)
+	WHERE st.tripID in tripIDs
+	WITH DISTINCT s.name as name, count(s.name) as cnt
+	RETURN name ORDER BY cnt DESC
+`

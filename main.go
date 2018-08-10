@@ -37,6 +37,35 @@ func StopsHandler(driver bolt.Driver) Handler {
 	}
 }
 
+func StopsAndRoutesHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		type StopsAndRoutes struct {
+			Stops  []string
+			Routes []Route
+		}
+
+		stops, err := getAllStopNames(driver)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		routes, err := getAllRouteIDs(driver)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		data := StopsAndRoutes{stops, routes}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
+	}
+}
+
 func RoutesHandler(driver bolt.Driver) Handler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := getAllRouteIDs(driver)
@@ -213,6 +242,28 @@ func RouteDirectionsThroughStopHandler(driver bolt.Driver) Handler {
 	}
 }
 
+func RouteStopsHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		routeID, err := url.QueryUnescape(vars["routeID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		data, err := getStopsForRouteID(driver, routeID)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
+	}
+}
+
 func TripTimelineHandler(driver bolt.Driver) Handler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -239,6 +290,7 @@ func main() {
 	driver := openDB()
 	router := mux.NewRouter().UseEncodedPath()
 	router.HandleFunc("/stops", StopsHandler(driver))
+	router.HandleFunc("/stops/and/routes", StopsAndRoutesHandler(driver))
 	router.HandleFunc("/routes", RoutesHandler(driver))
 	router.HandleFunc("/routes/variants/id/{routeID}", RoutesVariantsByIdHandler(driver))
 	router.HandleFunc("/routes/variants/stop/{stopName}", RoutesVariantsByStopNameHandler(driver))
@@ -246,6 +298,7 @@ func main() {
 	router.HandleFunc("/route/{routeID}/info", RouteInfoHandler(driver))
 	router.HandleFunc("/route/{routeID}/directions", RouteDirectionsHandler(driver))
 	router.HandleFunc("/route/{routeID}/directions/through/{stopName}", RouteDirectionsThroughStopHandler(driver))
+	router.HandleFunc("/route/{routeID}/stops", RouteStopsHandler(driver))
 	router.HandleFunc("/trip/{tripID}/timeline", TripTimelineHandler(driver))
 	http.ListenAndServe(":8080", router)
 }

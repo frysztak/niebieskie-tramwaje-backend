@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"sort"
+	"strconv"
 )
 
 const (
@@ -82,7 +83,7 @@ type RouteVariant struct {
 	IsBus     bool
 	FirstStop string
 	LastStop  string
-	TripIDs   []string
+	TripIDs   []int
 }
 
 func getRouteVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVariant, error) {
@@ -115,9 +116,9 @@ func getRouteVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVari
 			lastStopName := row[3].(string)
 			tripIDs := row[4].([]interface{})
 
-			s := make([]string, len(tripIDs))
+			s := make([]int, len(tripIDs))
 			for i, v := range tripIDs {
-				s[i] = fmt.Sprint(v)
+				s[i] = int(v.(int64))
 			}
 			variants = append(variants, RouteVariant{routeID, isBus, firstStopName, lastStopName, s})
 		}
@@ -157,9 +158,9 @@ func getRouteVariantsByStopName(driver bolt.Driver, stopName string) ([]RouteVar
 			lastStopName := row[3].(string)
 			tripIDs := row[4].([]interface{})
 
-			s := make([]string, len(tripIDs))
+			s := make([]int, len(tripIDs))
 			for i, v := range tripIDs {
-				s[i] = fmt.Sprint(v)
+				s[i] = int(v.(int64))
 			}
 			variants = append(variants, RouteVariant{routeID, isBus, firstStopName, lastStopName, s})
 		}
@@ -170,7 +171,7 @@ func getRouteVariantsByStopName(driver bolt.Driver, stopName string) ([]RouteVar
 }
 
 type TimeTableEntry struct {
-	TripID        string
+	TripID        int
 	ArrivalTime   string
 	DepartureTime string
 }
@@ -227,16 +228,19 @@ func getTimetable(driver bolt.Driver, routeID string, stopName string, direction
 		if err != nil && err != io.EOF {
 			return TimeTable{}, err
 		} else if err != io.EOF {
-			tripID := row[0].(string)
+			tripID := int(row[0].(int64))
 			arrivalTime := row[1].(string)
 			departureTime := row[2].(string)
 
 			entry := TimeTableEntry{tripID, arrivalTime, departureTime}
 
-			switch prefix := tripID[0]; prefix {
-			case '6': // Monday-Thursday
+			tripIDString := strconv.Itoa(tripID)
+			switch prefix := tripIDString[0]; prefix {
+			case '2': // Monday-Thursday
+			case '6':
 				timeTable.Weekdays = append(timeTable.Weekdays, entry)
 			case '8': // Friday
+			case '1': // it's actual '10', but we can cheat a little
 				// ignore.
 				// for some reason, in Wrocław GTFS they make distinction between
 				// Mondays-Thurdays and Fridays. To the best of my knowledge,
@@ -391,11 +395,11 @@ type TripTimelineEntry struct {
 }
 
 type TripTimeline struct {
-	TripID   string
+	TripID   int
 	Timeline []TripTimelineEntry
 }
 
-func getTripTimeline(driver bolt.Driver, tripID string) (TripTimeline, error) {
+func getTripTimeline(driver bolt.Driver, tripID int) (TripTimeline, error) {
 	var timeline TripTimeline
 	timeline.TripID = tripID
 
@@ -428,7 +432,7 @@ func getTripTimeline(driver bolt.Driver, tripID string) (TripTimeline, error) {
 		}
 	}
 
-	log.Printf(`Received %d timeline entries for trip id "%s"`, len(timeline.Timeline), tripID)
+	log.Printf(`Received %d timeline entries for trip id "%d"`, len(timeline.Timeline), tripID)
 	return timeline, nil
 }
 

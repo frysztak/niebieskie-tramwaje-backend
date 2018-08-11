@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
+	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 func wrapJSON(name string, item interface{}) ([]byte, error) {
@@ -267,13 +269,19 @@ func RouteStopsHandler(driver bolt.Driver) Handler {
 func TripTimelineHandler(driver bolt.Driver) Handler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		tripID, err := url.QueryUnescape(vars["tripID"])
+		tripIDString, err := url.QueryUnescape(vars["tripID"])
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 
-		data, err := getTripTimeline(driver, tripID)
+		tripID, err := strconv.ParseInt(tripIDString, 10, 32)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		data, err := getTripTimeline(driver, int(tripID))
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return

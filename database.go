@@ -221,6 +221,9 @@ func getTimetable(driver bolt.Driver, routeID string, stopName string, direction
 	timeTable.RouteID = routeID
 	timeTable.StopName = stopName
 	timeTable.Direction = direction
+	timeTable.Weekdays = []TimeTableEntry{}
+	timeTable.Saturdays = []TimeTableEntry{}
+	timeTable.Sundays = []TimeTableEntry{}
 
 	for err == nil {
 		var row []interface{}

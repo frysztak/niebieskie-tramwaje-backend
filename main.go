@@ -308,7 +308,7 @@ func main() {
 	router.HandleFunc("/route/{routeID}/directions/through/{stopName}", RouteDirectionsThroughStopHandler(driver))
 	router.HandleFunc("/route/{routeID}/stops", RouteStopsHandler(driver))
 	router.HandleFunc("/trip/{tripID}/timeline", TripTimelineHandler(driver))
-	http.ListenAndServe(":8080", router)
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
 
 func checkErr(err error) {

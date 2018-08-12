@@ -8,30 +8,23 @@ const getAllStopNamesQuery = `
 
 const getAllRouteIDsQuery = `
 	MATCH (t:Trip)
-    RETURN DISTINCT t.routeID,
-    CASE t.vehicleID
-        WHEN 1  THEN true
-        WHEN 2  THEN true
-        WHEN 8  THEN true
-        WHEN 13 THEN true
-        ELSE false
-    END AS is_bus
-    ORDER BY t.routeID;
+	WITH t
+	MATCH (:Route{routeID: t.routeID})-[:is_type]->(routeType:RouteType)
+    RETURN DISTINCT
+		t.routeID,
+		routeType.name
+	ORDER BY t.routeID;
 `
 
 const getRouteVariantsByRouteIDQuery = `
 	MATCH (trip:Trip{routeID: {routeID}})-[:starts_at]->(st:StopTime)-[:happens_at]->(stop:Stop)
 	WITH trip.tripID as tripID, stop.name as firstStopName
 	MATCH (trip:Trip{tripID: tripID})-[:ends_at]->(st:StopTime)-[:happens_at]->(stop:Stop)
+	WITH trip, stop, firstStopName
+	MATCH (route:Route{routeID: trip.routeID})-[:is_type]->(routeType: RouteType)
 	RETURN
-		trip.routeID as routeID,
-		CASE trip.vehicleID
-    	    WHEN 1  THEN true
-    	    WHEN 2  THEN true
-    	    WHEN 8  THEN true
-    	    WHEN 13 THEN true
-    	    ELSE false
-    	END AS isBus,
+	    trip.routeID as routeID,
+		routeType.name as routeType,
 		firstStopName,
 		stop.name as lastStopName,
 		collect(trip.tripID) as tripIDs
@@ -44,15 +37,11 @@ const getRouteVariantsByStopNameQuery = `
 	MATCH (trip:Trip{tripID: tripID})-[:starts_at]-(st:StopTime)-[:happens_at]->(stop:Stop)
 	WITH trip.tripID as tripID, stop.name as firstStopName
 	MATCH (trip:Trip{tripID: tripID})-[:ends_at]-(st:StopTime)-[:happens_at]->(stop:Stop)
+	WITH trip, firstStopName, stop
+	MATCH (:Route{routeID: trip.routeID})-[:is_type]-(routeType:RouteType)
 	RETURN
 		trip.routeID as routeID,
-		CASE trip.vehicleID
-    	    WHEN 1  THEN true
-    	    WHEN 2  THEN true
-    	    WHEN 8  THEN true
-    	    WHEN 13 THEN true
-    	    ELSE false
-    	END AS isBus,
+		routeType.name as routeType,
 		firstStopName,
 		stop.name as lastStopName,
 		collect(trip.tripID) as tripIDs
@@ -92,17 +81,17 @@ const getTimetableQuery = `
 `
 
 const getRouteInfoQuery = `
-	MATCH (route:Route {routeID: {routeID}})
-	WITH route
+	MATCH (route:Route {routeID: {routeID}})-[:is_type]->(routeType:RouteType)
+	WITH route, routeType
 	MATCH (agency:Agency {agencyID: route.agencyID})
 	RETURN
-		route.routeID as routeID,
-	    route.typeID as typeID,
-	    route.validFrom as validFrom,
-	    route.validUntil as validUntil,
-	    agency.name as agencyName,
-	    agency.url as agencyUrl,
-	    agency.phone as agencyPhone;
+        route.routeID as routeID,
+        routeType.name as routeType,
+        route.validFrom as validFrom,
+        route.validUntil as validUntil,
+        agency.name as agencyName,
+        agency.url as agencyUrl,
+        agency.phone as agencyPhone;
 `
 
 const getTripTimelineQuery = `

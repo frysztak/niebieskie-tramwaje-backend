@@ -7,6 +7,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -69,7 +70,10 @@ func getAllRouteIDs(driver bolt.Driver) ([]Route, error) {
 		if err != nil && err != io.EOF {
 			return nil, err
 		} else if err != io.EOF {
-			route := Route{row[0].(string), row[1].(bool)}
+			routeID := row[0].(string)
+			routeType := row[1].(string)
+			isBus := strings.Contains(routeType, "bus")
+			route := Route{routeID, isBus}
 			routes = append(routes, route)
 		}
 	}
@@ -111,7 +115,7 @@ func getRouteVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVari
 			return nil, err
 		} else if err != io.EOF {
 			routeID := row[0].(string)
-			isBus := row[1].(bool)
+			routeType := row[1].(string)
 			firstStopName := row[2].(string)
 			lastStopName := row[3].(string)
 			tripIDs := row[4].([]interface{})
@@ -120,6 +124,7 @@ func getRouteVariantsForRouteID(driver bolt.Driver, routeID string) ([]RouteVari
 			for i, v := range tripIDs {
 				s[i] = int(v.(int64))
 			}
+			isBus := strings.Contains(routeType, "bus")
 			variants = append(variants, RouteVariant{routeID, isBus, firstStopName, lastStopName, s})
 		}
 	}
@@ -153,7 +158,7 @@ func getRouteVariantsByStopName(driver bolt.Driver, stopName string) ([]RouteVar
 			return nil, err
 		} else if err != io.EOF {
 			routeID := row[0].(string)
-			isBus := row[1].(bool)
+			routeType := row[1].(string)
 			firstStopName := row[2].(string)
 			lastStopName := row[3].(string)
 			tripIDs := row[4].([]interface{})
@@ -162,6 +167,7 @@ func getRouteVariantsByStopName(driver bolt.Driver, stopName string) ([]RouteVar
 			for i, v := range tripIDs {
 				s[i] = int(v.(int64))
 			}
+			isBus := strings.Contains(routeType, "bus")
 			variants = append(variants, RouteVariant{routeID, isBus, firstStopName, lastStopName, s})
 		}
 	}
@@ -272,7 +278,8 @@ func getTimetable(driver bolt.Driver, routeID string, stopName string, direction
 
 type RouteInfo struct {
 	RouteID     string
-	TypeID      int
+	RouteType   string
+	IsBus       bool
 	ValidFrom   string
 	ValidUntil  string
 	AgencyName  string
@@ -306,14 +313,15 @@ func getRouteInfo(driver bolt.Driver, routeID string) (RouteInfo, error) {
 			return routeInfo, err
 		} else if err != io.EOF {
 			routeID := row[0].(string)
-			typeID := row[1].(int64)
+			routeType := row[1].(string)
 			validFrom := row[2].(string)
 			validUntil := row[3].(string)
 			agencyName := row[4].(string)
 			agencyUrl := row[5].(string)
 			agencyPhone := row[6].(string)
 
-			routeInfo = RouteInfo{routeID, int(typeID), validFrom, validUntil, agencyName, agencyUrl, agencyPhone}
+			isBus := strings.Contains(routeType, "bus")
+			routeInfo = RouteInfo{routeID, routeType, isBus, validFrom, validUntil, agencyName, agencyUrl, agencyPhone}
 		}
 	}
 

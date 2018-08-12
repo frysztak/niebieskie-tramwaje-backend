@@ -240,18 +240,24 @@ func getTimetable(driver bolt.Driver, routeID string, stopName string, direction
 			tripIDString := strconv.Itoa(tripID)
 			switch prefix := tripIDString[0]; prefix {
 			case '2': // Monday-Thursday
+				fallthrough
 			case '6':
 				timeTable.Weekdays = append(timeTable.Weekdays, entry)
+
 			case '8': // Friday
+				fallthrough
 			case '1': // it's actual '10', but we can cheat a little
 				// ignore.
 				// for some reason, in Wrocław GTFS they make distinction between
 				// Mondays-Thurdays and Fridays. To the best of my knowledge,
 				// there is no difference whatsoever.
+
 			case '3':
 				timeTable.Saturdays = append(timeTable.Saturdays, entry)
+
 			case '4':
 				timeTable.Sundays = append(timeTable.Sundays, entry)
+
 			default:
 				panic(fmt.Sprintf("Unknown prefix: %d", prefix))
 			}

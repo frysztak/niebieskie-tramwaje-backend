@@ -1,16 +1,20 @@
 package main
 
 import (
+	"errors"
 	"github.com/docker/libcompose/docker"
 	"github.com/docker/libcompose/docker/ctx"
 	"github.com/docker/libcompose/project"
 	"github.com/docker/libcompose/project/options"
 	"golang.org/x/net/context"
+	"gopkg.in/matryer/try.v1"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type DockerClient struct {
@@ -80,4 +84,24 @@ func createDockerClient(mpkPath string) (DockerClient, error) {
 
 	client.project = project
 	return client, err
+}
+
+func isDatabaseUp() bool {
+	port := "7687" // BOLT
+
+	err := try.Do(func(attempt int) (bool, error) {
+		_, err := net.Listen("tcp", ":"+port)
+		// this might be a bit counter-intuitive, but we're actually
+		// waiting for the port to become used.
+		if err == nil {
+			// port is unused
+			time.Sleep(1 * time.Second)
+			return attempt < 10, errors.New("")
+		} else {
+			// port is used, exit
+			log.Print("Database is up")
+			return attempt < 10, nil
+		}
+	})
+	return err == nil
 }

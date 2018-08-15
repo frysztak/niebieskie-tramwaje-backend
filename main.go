@@ -4,13 +4,25 @@ import (
 	"github.com/robfig/cron"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
-	project, err := createProject()
+	client, err := createDockerClient()
 	if err != nil {
 		log.Fatal(err)
 	}
+	client.up()
+
+	ch := make(chan os.Signal)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ch
+		client.down()
+		os.Exit(1)
+	}()
 
 	var localStatus Status
 	var repoStatus RepositoryStatus
@@ -20,7 +32,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	checkForUpdatesWrapped := func() { checkForUpdates(&localStatus, &repoStatus, &project) }
+	checkForUpdatesWrapped := func() { checkForUpdates(&localStatus, &repoStatus, &client) }
 
 	c := cron.New()
 	c.AddFunc("@hourly", checkForUpdatesWrapped)

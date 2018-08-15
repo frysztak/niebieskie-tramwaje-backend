@@ -28,8 +28,10 @@ func getRepositoryStatus(status *RepositoryStatus) error {
 	modifiedTerm := "http://purl.org/dc/terms/modified"
 
 	if g.Len() == 0 {
-		err = errors.New("Received graph is empty")
+		err = errors.New("Response is empty")
 		return err
+	} else {
+		log.Print("Received non-empty response")
 	}
 
 	triple := g.One(nil, rdf2go.NewResource(modifiedTerm), nil)

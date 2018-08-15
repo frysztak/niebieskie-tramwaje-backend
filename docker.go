@@ -9,24 +9,34 @@ import (
 	"log"
 )
 
-func createProject() (project.APIProject, error) {
-	c := ctx.Context{
+type DockerClient struct {
+	project project.APIProject
+	context *ctx.Context
+}
+
+func (c DockerClient) up() error {
+	return c.project.Up(context.Background(), options.Up{})
+}
+
+func (c DockerClient) down() error {
+	return c.project.Down(context.Background(), options.Down{})
+}
+
+func createDockerClient() (DockerClient, error) {
+	var client DockerClient
+	client.context = &ctx.Context{
 		Context: project.Context{
 			ComposeFiles: []string{"neo4j.yml"},
 			ProjectName:  "neo4j",
 		},
 	}
 
-	project, err := docker.NewProject(&c, nil)
+	project, err := docker.NewProject(client.context, nil)
 	if err != nil {
 		log.Print("Failed to created Docker project")
-		return nil, err
+		return client, err
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	err = project.Up(context.Background(), options.Up{})
-	return project, err
+	client.project = project
+	return client, err
 }

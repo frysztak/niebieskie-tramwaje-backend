@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/docker/libcompose/project"
 	"log"
 	"time"
 )
 
-func checkForUpdates(localStatus *Status, repoStatus *RepositoryStatus, client *project.APIProject) {
+func checkForUpdates(localStatus *Status, repoStatus *RepositoryStatus, client *DockerClient) {
+	log.Print("Checking for updates...")
 	err := getRepositoryStatus(repoStatus)
 	if err != nil {
 		log.Printf("Getting repository status failed. %s", err)
@@ -16,11 +16,12 @@ func checkForUpdates(localStatus *Status, repoStatus *RepositoryStatus, client *
 	if repoStatus.ModifiedDate.After(localStatus.ModifiedDate) {
 		log.Print("Database update triggered...")
 		update(localStatus, repoStatus, client)
+	} else {
+		log.Print("Nothing to update")
 	}
-
 }
 
-func update(localStatus *Status, repoStatus *RepositoryStatus, client *project.APIProject) error {
+func update(localStatus *Status, repoStatus *RepositoryStatus, client *DockerClient) error {
 	checksum, err := downloadZip(repoStatus.ZipURL, localStatus.Directory)
 	if err != nil {
 		log.Printf("Update operation failed with error: %s", err)

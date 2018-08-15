@@ -66,15 +66,34 @@ func getRepositoryStatus(status *RepositoryStatus) error {
 	return nil
 }
 
-func downloadZip(zipUrl string, destination string) error {
+func downloadZip(zipUrl string, destination string) (string, error) {
 	filename := filepath.Base(zipUrl)
-	//path := filepath.Join(destination, filename)
+	path := filepath.Join(destination, filename)
 
-	log.Printf("Downloading %s into %s", filename, destination)
-	//err := downloadFile(path, zipUrl)
-	//if err == nil {
-	//	log.Printf("Download finished successfully")
-	//}
-	//return err
-	return nil
+	log.Printf("Downloading %s into %s...", filename, destination)
+	if err := downloadFile(path, zipUrl); err != nil {
+		log.Print("Download failed")
+		return "", err
+	}
+
+	log.Printf("Preparing GTFS directory...")
+	gtfsPath, err := prepareGTFSdir(destination)
+	if err != nil {
+		log.Print("Preparation of GTFS directory failed")
+		return "", err
+	}
+
+	log.Printf("Unzipping %s into %s...", path, gtfsPath)
+	if err := unzip(path, gtfsPath); err != nil {
+		log.Print("Unzipping failed")
+		return "", err
+	}
+
+	log.Print("Calculating checksum of ZIP file...")
+	checksum, err := calculateMD5(path)
+	if err != nil {
+		log.Print("Checksum calculation failed")
+	}
+
+	return checksum, err
 }

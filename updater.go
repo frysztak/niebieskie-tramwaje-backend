@@ -13,15 +13,23 @@ func checkForUpdates(localStatus *Status, repoStatus *RepositoryStatus) {
 	}
 
 	if repoStatus.ModifiedDate.After(localStatus.ModifiedDate) {
-		log.Print("DB update triggered...")
-		err := downloadZip(repoStatus.ZipURL, localStatus.Directory)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		localStatus.LastCheckedDate = time.Now()
-		localStatus.ModifiedDate = repoStatus.ModifiedDate
-		// save localStatus
+		log.Print("Database update triggered...")
+		update(localStatus, repoStatus)
 	}
 
+}
+
+func update(localStatus *Status, repoStatus *RepositoryStatus) error {
+	checksum, err := downloadZip(repoStatus.ZipURL, localStatus.Directory)
+	if err != nil {
+		log.Printf("Update operation failed with error: %s", err)
+		return err
+	}
+
+	localStatus.LastCheckedDate = time.Now()
+	localStatus.ModifiedDate = repoStatus.ModifiedDate
+	localStatus.ZipChecksum = checksum
+	// save localStatus
+
+	return nil
 }

@@ -10,7 +10,15 @@ import (
 )
 
 func main() {
-	client, err := createDockerClient()
+	var localStatus Status
+	var repoStatus RepositoryStatus
+
+	err := loadStatus(&localStatus)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client, err := createDockerClient(localStatus.Directory)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,14 +31,6 @@ func main() {
 		client.down()
 		os.Exit(1)
 	}()
-
-	var localStatus Status
-	var repoStatus RepositoryStatus
-
-	err = loadStatus(&localStatus)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	checkForUpdatesWrapped := func() { checkForUpdates(&localStatus, &repoStatus, &client) }
 

@@ -29,7 +29,7 @@ func update(localStatus *Status, repoStatus *RepositoryStatus) error {
 	localStatus.LastCheckedDate = time.Now()
 	localStatus.ModifiedDate = repoStatus.ModifiedDate
 	localStatus.ZipChecksum = checksum
-	// save localStatus
+	localStatus.save()
 
 	return nil
 }

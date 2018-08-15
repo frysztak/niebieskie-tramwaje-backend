@@ -19,13 +19,23 @@ type Status struct {
 	DatabaseBusy    *abool.AtomicBool `json:"-"`
 }
 
-func createDefaultStatusFile(statusPath string) error {
-	status := Status{time.Unix(0, 0), time.Unix(0, 0), "", "", nil}
-	json, err := json.MarshalIndent(status, "", "    ")
+const (
+	statusFileName = "status.json"
+)
+
+func (s Status) save() error {
+	json, err := json.MarshalIndent(s, "", "    ")
 	if err != nil {
 		return err
 	}
+
+	statusPath := filepath.Join(s.Directory, statusFileName)
 	return ioutil.WriteFile(statusPath, json, 0644)
+}
+
+func createDefaultStatusFile(dir string) error {
+	status := Status{time.Unix(0, 0), time.Unix(0, 0), "", dir, nil}
+	return status.save()
 }
 
 func loadStatus(status *Status) error {
@@ -42,12 +52,12 @@ func loadStatus(status *Status) error {
 		return err
 	}
 
-	statusPath := filepath.Join(mpkDir, "status.json")
+	statusPath := filepath.Join(mpkDir, statusFileName)
 	log.Printf("Looking for file %s...", statusPath)
 
 	if _, err := os.Stat(statusPath); os.IsNotExist(err) {
 		log.Print("Status file doesn't exist, creating one")
-		err = createDefaultStatusFile(statusPath)
+		err = createDefaultStatusFile(mpkDir)
 		if err != nil {
 			return err
 		}

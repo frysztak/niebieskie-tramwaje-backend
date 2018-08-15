@@ -1,0 +1,14 @@
+neo4j:
+  image: neo4j:3.4.5          ## we use neo4j v3
+  ports:                    ## publish ports to have Web UI
+   - "7474:7474"
+   - "7687:7687"
+  volumes:                  ## adds folder with login/password
+   - $HOME/docker/neo4j/data:/data
+   - $HOME/docker/neo4j/logs:/var/logs
+   - $HOME/docker/neo4j/conf:/conf
+   - $HOME/docker/neo4j/import:/import
+   - $HOME/docker/neo4j/plugins:/var/lib/neo4j/plugins
+  environment:
+   - NEO4J_dbms_memory_heap_max__size=4G
+   - NEO4J_dbms_security_procedures_unrestricted=apoc.\\\*

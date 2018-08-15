@@ -7,15 +7,20 @@ import (
 )
 
 func main() {
-	var localStatus Status
-	var repoStatus RepositoryStatus
-
-	err := loadStatus(&localStatus)
+	project, err := createProject()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	checkForUpdatesWrapped := func() { checkForUpdates(&localStatus, &repoStatus) }
+	var localStatus Status
+	var repoStatus RepositoryStatus
+
+	err = loadStatus(&localStatus)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	checkForUpdatesWrapped := func() { checkForUpdates(&localStatus, &repoStatus, &project) }
 
 	c := cron.New()
 	c.AddFunc("@hourly", checkForUpdatesWrapped)

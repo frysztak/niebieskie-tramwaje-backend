@@ -26,6 +26,13 @@ func update(localStatus *Status, repoStatus *RepositoryStatus) error {
 		return err
 	}
 
+	if localStatus.ZipChecksum == checksum {
+		log.Print("Checksums match; file didn't actually change. Aborting.")
+		localStatus.LastCheckedDate = time.Now()
+		localStatus.save()
+		return nil
+	}
+
 	localStatus.LastCheckedDate = time.Now()
 	localStatus.ModifiedDate = repoStatus.ModifiedDate
 	localStatus.ZipChecksum = checksum

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 func wrapJSON(name string, item interface{}) ([]byte, error) {
@@ -31,8 +32,9 @@ func StopsHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		w.Write(wrappedData)
 	}
@@ -60,8 +62,9 @@ func StopsAndRoutesHandler(driver bolt.Driver) Handler {
 
 		data := StopsAndRoutes{stops, routes}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	}
@@ -76,8 +79,9 @@ func RoutesHandler(driver bolt.Driver) Handler {
 		}
 
 		// TODO: wrap data
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	}
@@ -99,8 +103,9 @@ func RoutesVariantsByIdHandler(driver bolt.Driver) Handler {
 		}
 
 		wrappedData := map[string][]RouteVariant{"RouteVariants": data}
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		json.NewEncoder(w).Encode(wrappedData)
 	}
 }
@@ -125,8 +130,9 @@ func RoutesVariantsByStopNameHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		w.Write(wrappedData)
 	}
@@ -164,8 +170,9 @@ func RoutesTimeTableHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		w.Write(jsonData)
 	}
@@ -186,8 +193,9 @@ func RouteInfoHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	}
@@ -208,8 +216,9 @@ func RouteDirectionsHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	}
@@ -236,8 +245,9 @@ func RouteDirectionsThroughStopHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	}
@@ -258,8 +268,9 @@ func RouteStopsHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	}
@@ -286,8 +297,9 @@ func TripTimelineHandler(driver bolt.Driver) Handler {
 			return
 		}
 
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Expires", "Wed, 21 Oct 2020 07:28:00 GMT") //TODO: dynamically read actual date from DB
+		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(data)
 	}

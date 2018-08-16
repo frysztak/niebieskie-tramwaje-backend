@@ -13,6 +13,7 @@ neo4j:
    - {NEO4J}/import:/import
    - {NEO4J}/plugins:/var/lib/neo4j/plugins
   environment:
+   - NEO4J_AUTH=neo4j/krowa
    - NEO4J_dbms_memory_heap_max__size=4G
    - NEO4J_dbms_security_procedures_unrestricted=apoc.\\\*
 `

@@ -19,31 +19,41 @@ func openDB() bolt.Driver {
 	return bolt.NewDriver()
 }
 
-func getAllStopNames(driver bolt.Driver) ([]string, error) {
+type Stop struct {
+	Name      string
+	Latitude  float32
+	Longitude float32
+}
+
+func getAllStops(driver bolt.Driver) ([]Stop, error) {
 	conn, err := driver.OpenNeo(URL)
+	stops := make([]Stop, 0)
+
 	if err != nil {
-		return nil, err
+		return stops, err
 	}
 	defer conn.Close()
 
 	rows, err := conn.QueryNeo(getAllStopNamesQuery, nil)
 	if err != nil {
-		return nil, err
+		return stops, err
 	}
 
-	stop_names := make([]string, 0)
 	for err == nil {
 		var row []interface{}
 		row, _, err = rows.NextNeo()
 		if err != nil && err != io.EOF {
-			return nil, err
+			return stops, err
 		} else if err != io.EOF {
-			stop_names = append(stop_names, row[0].(string))
+			name := row[0].(string)
+			lat := row[1].(float64)
+			long := row[2].(float64)
+			stops = append(stops, Stop{name, float32(lat), float32(long)})
 		}
 	}
 
-	log.Printf(`Received %d stop names`, len(stop_names))
-	return stop_names, nil
+	log.Printf(`Received %d stops`, len(stops))
+	return stops, nil
 }
 
 type Route struct {

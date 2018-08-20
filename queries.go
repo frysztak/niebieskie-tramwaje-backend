@@ -2,8 +2,8 @@ package main
 
 const getAllStopNamesQuery = `
 	MATCH (s:Stop)
-    RETURN DISTINCT s.name
-    ORDER BY s.name;
+    RETURN DISTINCT s.name, s.latitude, s.longitude
+	ORDER BY s.name;
 `
 
 const getAllRouteIDsQuery = `

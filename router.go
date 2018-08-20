@@ -21,12 +21,12 @@ type Handler func(w http.ResponseWriter, r *http.Request)
 
 func StopsHandler(driver bolt.Driver) Handler {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := getAllStopNames(driver)
+		data, err := getAllStops(driver)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
-		wrappedData, err := wrapJSON("stopNames", data)
+		wrappedData, err := wrapJSON("stops", data)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -44,11 +44,11 @@ func StopsAndRoutesHandler(driver bolt.Driver) Handler {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		type StopsAndRoutes struct {
-			Stops  []string
+			Stops  []Stop
 			Routes []Route
 		}
 
-		stops, err := getAllStopNames(driver)
+		stops, err := getAllStops(driver)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return

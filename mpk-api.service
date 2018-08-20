@@ -1,0 +1,11 @@
+[Unit]
+Description=MPK-API
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+ExecStart=/home/sebastian/MPK-API
+
+[Install]
+WantedBy=multi-user.target

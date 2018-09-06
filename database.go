@@ -213,6 +213,41 @@ func (tt TimeTable) sort() {
 	sort.Slice(tt.Sundays, predFactory(tt.Sundays))
 }
 
+func normaliseTime(time string) string {
+	mapping := map[string]string{
+		"24:": "00:",
+		"25:": "01:",
+		"26:": "02:",
+		"27:": "03:",
+		"28:": "04:",
+		"29:": "05:",
+	}
+
+	for original, replacement := range mapping {
+		if strings.Contains(time, original) {
+			return strings.Replace(time, original, replacement, -1)
+		}
+	}
+
+	return time
+}
+
+func (entry *TimeTableEntry) normalise() {
+	entry.ArrivalTime = normaliseTime(entry.ArrivalTime)
+	entry.DepartureTime = normaliseTime(entry.DepartureTime)
+}
+
+func (tt TimeTable) normalise() {
+	normaliseDay := func(slice []TimeTableEntry) {
+		for idx, _ := range slice {
+			(&slice[idx]).normalise()
+		}
+	}
+	normaliseDay(tt.Weekdays)
+	normaliseDay(tt.Saturdays)
+	normaliseDay(tt.Sundays)
+}
+
 func getTimetable(driver bolt.Driver, routeID string, stopName string, direction string) (TimeTable, error) {
 	conn, err := driver.OpenNeo(URL)
 	if err != nil {
@@ -281,6 +316,7 @@ func getTimetable(driver bolt.Driver, routeID string, stopName string, direction
 	}
 
 	timeTable.sort()
+	timeTable.normalise()
 
 	log.Printf(`Received %d time table entries for route ID "%s", stop name "%s" and direction "%s"`, len(timeTable.Weekdays)+len(timeTable.Saturdays)+len(timeTable.Sundays), routeID, stopName, direction)
 	return timeTable, nil
@@ -454,7 +490,7 @@ func getTripTimeline(driver bolt.Driver, tripID int) (TripTimeline, error) {
 			return timeline, err
 		} else if err != io.EOF {
 			stopName := row[0].(string)
-			departureTime := row[1].(string)
+			departureTime := normaliseTime(row[1].(string))
 			timeline.Timeline = append(timeline.Timeline, TripTimelineEntry{stopName, departureTime})
 		}
 	}

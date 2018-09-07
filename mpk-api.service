@@ -2,6 +2,8 @@
 Description=MPK-API
 
 [Service]
+User=mpk
+Group=mpk
 Type=simple
 Restart=always
 RestartSec=5s

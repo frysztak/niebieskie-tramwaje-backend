@@ -97,12 +97,12 @@ const getRouteInfoQuery = `
 const getTripTimelineQuery = `
 	MATCH p=(t:Trip {tripID: {tripID}})-[:starts_at]-(:StopTime)-[:next*]-(:StopTime)-[:ends_at]-(t)
 	WITH filter(n in nodes(p) WHERE EXISTS(n.stopID)) as nodes
-	WITH extract(n in nodes | [n.stopID, n.departureTime]) AS stopIDsAndTime
-	UNWIND stopIDsAndTime as tuples
-	WITH tuples[0] as stopID, tuples[1] as departureTime
+	WITH extract(n in nodes | [n.stopID, n.departureTime, n.onDemand]) AS tuple
+	UNWIND tuple as tuples
+	WITH tuples[0] as stopID, tuples[1] as departureTime, tuples[2] as onDemand
 
 	MATCH (s:Stop {stopID: stopID})
-	RETURN s.name as stopName, departureTime
+	RETURN s.name as stopName, departureTime, onDemand
 `
 
 const getStopsForRouteIDQuery = `

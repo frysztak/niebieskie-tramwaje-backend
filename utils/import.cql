@@ -25,7 +25,8 @@ CREATE (:StopTime {
     arrivalTime:   substring(row.arrival_time, 0, 5),
     departureTime: substring(row.departure_time, 0, 5),
     stopID:        toInteger(row.stop_id),
-    stopSequence:  toInteger(row.stop_sequence)
+    stopSequence:  toInteger(row.stop_sequence),
+    onDemand:      toInteger(row.drop_off_type) = 3
 });
 
 USING PERIODIC COMMIT

@@ -455,6 +455,7 @@ func getRouteDirectionsThroughStop(driver bolt.Driver, routeID string, stopName 
 type TripTimelineEntry struct {
 	StopName      string
 	DepartureTime string
+	OnDemand      bool
 }
 
 type TripTimeline struct {
@@ -491,7 +492,8 @@ func getTripTimeline(driver bolt.Driver, tripID int) (TripTimeline, error) {
 		} else if err != io.EOF {
 			stopName := row[0].(string)
 			departureTime := normaliseTime(row[1].(string))
-			timeline.Timeline = append(timeline.Timeline, TripTimelineEntry{stopName, departureTime})
+			onDemand := row[2].(bool)
+			timeline.Timeline = append(timeline.Timeline, TripTimelineEntry{stopName, departureTime, onDemand})
 		}
 	}
 

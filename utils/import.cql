@@ -5,7 +5,8 @@ CREATE (:Trip {
     routeID:   row.route_id,
     vehicleID: toInteger(row.vehicle_id),
     variantID: toInteger(row.variant_id),
-    headsign:  row.trip_headsign
+    headsign:  row.trip_headsign,
+    shapeID:   toInteger(row.shape_id)
 });
 
 USING PERIODIC COMMIT
@@ -83,6 +84,16 @@ CREATE (:CalendarDate {
     expectionType: row.exception_type
 });
 
+USING PERIODIC COMMIT
+LOAD CSV WITH HEADERS FROM "file:///shapes.txt" AS row
+CREATE (:ShapePoint {
+    shapeID:       toInteger(row.shape_id),
+    latitude:      toFloat(row.shape_pt_lat),
+    longitude:     toFloat(row.shape_pt_lon),
+    shapeSequence: toInteger(row.shape_pt_sequence)
+});
+
+
 CREATE INDEX ON :Trip(tripID);
 CREATE INDEX ON :Stop(stopID);
 CREATE INDEX ON :StopTime(tripID);
@@ -90,6 +101,7 @@ CREATE INDEX ON :VehicleType(vehicleID);
 CREATE INDEX ON :Route(routeID);
 CREATE INDEX ON :RouteType(typeID);
 CREATE INDEX ON :Agency(agencyID);
+CREATE INDEX ON :ShapePoint(shapeID);
 
 CALL db.awaitIndexes();
 
@@ -117,7 +129,7 @@ RETURN st, stop",
 "CREATE (st)-[:happens_at]->(stop)",
 {batchSize:200, parallel:false});
 
-// create `next` relationship
+// create `next` relationship for StopTimes
 CALL apoc.periodic.iterate(
 "MATCH (st:StopTime)
 WITH st

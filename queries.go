@@ -113,3 +113,37 @@ const getStopsForRouteIDQuery = `
 	WITH DISTINCT s.name as name, count(s.name) as cnt
 	RETURN name ORDER BY cnt DESC
 `
+
+const getShapeIDsQuery = `
+	MATCH (t:Trip{routeID: {routeID}})-[:ends_at]-(:StopTime)-[:happens_at]->(stop:Stop {name: {direction}})
+    WITH collect(t.tripID) as tripIDs
+
+    MATCH (s:Stop {name: {stopName}})
+    WITH collect(s.stopID) as stopIDs, tripIDs
+    MATCH (st:StopTime)
+    WHERE st.tripID IN tripIDs AND st.stopID in stopIDs
+    WITH collect(st.tripID) as tripIDs
+
+    MATCH (t: Trip)
+    WHERE t.tripID in tripIDs
+    WITH collect(t.tripID) as tripID, t.shapeID as shapeID
+    RETURN shapeID, tripID
+`
+
+const getShapeQuery = `
+	MATCH (s: ShapePoint {shapeID: {shapeID}})
+	RETURN s.shapeID, s.shapeSequence, s.latitude, s.longitude
+	ORDER BY s.shapeSequence
+`
+
+const getTripStopsQuery = `
+	MATCH p=(t:Trip {tripID: {tripID}})-[:starts_at]-(:StopTime)-[:next*]-(:StopTime)-[:ends_at]-(t)
+    WITH filter(n in nodes(p) WHERE EXISTS(n.stopID)) as nodes
+    WITH extract(n in nodes | [n.stopID, n.stopSequence]) AS tuple
+    UNWIND tuple as tuples
+    WITH tuples[0] as stopID, tuples[1] as stopSequence
+
+    MATCH (s:Stop {stopID: stopID})
+    RETURN s
+    ORDER BY stopSequence
+`

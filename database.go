@@ -540,3 +540,130 @@ func getStopsForRouteID(driver bolt.Driver, routeID string) (StopsForRoute, erro
 	log.Printf(`Received %d stop names for route id "%s"`, len(data.StopNames), routeID)
 	return data, nil
 }
+
+// key -> shapeID
+// value -> list of trip IDs
+type ShapeMap map[int][]int
+
+func getShapeIDs(driver bolt.Driver, routeID, direction, stopName string) (ShapeMap, error) {
+	data := ShapeMap{}
+
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return data, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getShapeIDsQuery)
+	if err != nil {
+		return data, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"routeID":   routeID,
+		"direction": direction,
+		"stopName":  stopName,
+	})
+	if err != nil {
+		return data, err
+	}
+
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return data, err
+		} else if err != io.EOF {
+			shapeID := int(row[0].(int64))
+			tripIDs_ := row[1].([]interface{})
+			tripIDs := make([]int, len(tripIDs_))
+			for i, v := range tripIDs_ {
+				tripIDs[i] = int(v.(int64))
+			}
+			data[shapeID] = tripIDs
+		}
+	}
+
+	log.Printf(`Received %d shape-map entries for route id "%s", direction "%s" and stopName "%s"`, len(data), routeID, direction, stopName)
+	return data, nil
+}
+
+type ShapePoint struct {
+	ShapeID       int `json:"-"`
+	ShapeSequence int `json:"-"`
+	Latitude      float32
+	Longitude     float32
+}
+
+type ShapePoints []ShapePoint
+
+func getShapePoints(driver bolt.Driver, shapeID int) (ShapePoints, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getShapeQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"shapeID": shapeID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var data ShapePoints
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return data, err
+		} else if err != io.EOF {
+			shapeID := int(row[0].(int64))
+			shapeSeq := int(row[1].(int64))
+			lat := float32(row[2].(float64))
+			lon := float32(row[3].(float64))
+			data = append(data, ShapePoint{shapeID, shapeSeq, lat, lon})
+		}
+	}
+
+	log.Printf(`Received %d shape-points for shape id %d`, len(data), shapeID)
+	return data, nil
+}
+
+type Shape struct {
+	ShapeID int
+	Points  ShapePoints
+}
+
+type Shapes []Shape
+
+func getShapes(driver bolt.Driver, routeID, direction, stopName string) (Shapes, error) {
+	shapeMap, err := getShapeIDs(driver, routeID, direction, stopName)
+	if err != nil {
+		return nil, err
+	}
+
+	// get all shape IDs
+	shapeIDs := make([]int, 0, len(shapeMap))
+	for k := range shapeMap {
+		shapeIDs = append(shapeIDs, k)
+	}
+
+	var data Shapes
+	for _, shapeID := range shapeIDs {
+		// TODO: use pipeline for concurrent querying
+		points, err := getShapePoints(driver, shapeID)
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, Shape{shapeID, points})
+	}
+
+	log.Printf(`Received %d shapes`, len(data))
+	return data, nil
+}

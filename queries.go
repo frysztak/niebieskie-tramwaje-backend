@@ -144,6 +144,6 @@ const getTripStopsQuery = `
     WITH tuples[0] as stopID, tuples[1] as stopSequence
 
     MATCH (s:Stop {stopID: stopID})
-    RETURN s
+    RETURN s.name, s.latitude, s.longitude
     ORDER BY stopSequence
 `

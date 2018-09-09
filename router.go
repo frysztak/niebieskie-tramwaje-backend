@@ -305,7 +305,7 @@ func TripTimelineHandler(driver bolt.Driver) Handler {
 	}
 }
 
-func RouteShapeHandler(driver bolt.Driver) Handler {
+func RouteMapHandler(driver bolt.Driver) Handler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		routeID, err := url.QueryUnescape(vars["routeID"])
@@ -326,13 +326,7 @@ func RouteShapeHandler(driver bolt.Driver) Handler {
 			return
 		}
 
-		data, err := getShapes(driver, routeID, direction, stopName)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		wrappedData, err := wrapJSON("Shapes", data)
+		data, err := getMapData(driver, routeID, direction, stopName)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -342,7 +336,7 @@ func RouteShapeHandler(driver bolt.Driver) Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Expires", cacheUntil)
 		w.WriteHeader(http.StatusOK)
-		w.Write(wrappedData)
+		json.NewEncoder(w).Encode(data)
 	}
 }
 
@@ -358,7 +352,7 @@ func createRouter(driver bolt.Driver) *mux.Router {
 	router.HandleFunc("/route/{routeID}/directions", RouteDirectionsHandler(driver))
 	router.HandleFunc("/route/{routeID}/directions/through/{stopName}", RouteDirectionsThroughStopHandler(driver))
 	router.HandleFunc("/route/{routeID}/stops", RouteStopsHandler(driver))
-	router.HandleFunc("/route/{routeID}/shapes/at/{stopName}/direction/{direction}", RouteShapeHandler(driver))
+	router.HandleFunc("/route/{routeID}/map/at/{stopName}/direction/{direction}", RouteMapHandler(driver))
 	router.HandleFunc("/trip/{tripID}/timeline", TripTimelineHandler(driver))
 	return router
 }

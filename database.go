@@ -635,35 +635,102 @@ func getShapePoints(driver bolt.Driver, shapeID int) (ShapePoints, error) {
 	return data, nil
 }
 
+func getStopsForTripID(driver bolt.Driver, tripID int) ([]Stop, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getTripStopsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"tripID": tripID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var stops []Stop
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return stops, err
+		} else if err != io.EOF {
+			name := row[0].(string)
+			lat := row[1].(float64)
+			long := row[2].(float64)
+			stops = append(stops, Stop{name, float32(lat), float32(long)})
+		}
+	}
+
+	log.Printf(`Received %d stops for trip id %d`, len(stops), tripID)
+	return stops, nil
+
+}
+
 type Shape struct {
 	ShapeID int
 	Points  ShapePoints
 }
 
-type Shapes []Shape
+type MapData struct {
+	Shapes []Shape
+	Stops  []Stop
+}
 
-func getShapes(driver bolt.Driver, routeID, direction, stopName string) (Shapes, error) {
+func getMapData(driver bolt.Driver, routeID, direction, stopName string) (MapData, error) {
+	var data MapData
+
 	shapeMap, err := getShapeIDs(driver, routeID, direction, stopName)
 	if err != nil {
-		return nil, err
+		return data, err
 	}
 
 	// get all shape IDs
+	// at the same time build a set of canonical tripIDs (one for each shape ID). they'll be used later.
 	shapeIDs := make([]int, 0, len(shapeMap))
+	tripIDs := make([]int, 0, len(shapeMap))
 	for k := range shapeMap {
 		shapeIDs = append(shapeIDs, k)
+		tripIDs = append(tripIDs, shapeMap[k][0])
 	}
 
-	var data Shapes
 	for _, shapeID := range shapeIDs {
 		// TODO: use pipeline for concurrent querying
 		points, err := getShapePoints(driver, shapeID)
 		if err != nil {
-			return nil, err
+			return data, err
 		}
-		data = append(data, Shape{shapeID, points})
+		data.Shapes = append(data.Shapes, Shape{shapeID, points})
 	}
 
-	log.Printf(`Received %d shapes`, len(data))
+	stopsMap := map[Stop]struct{}{}
+	for _, tripID := range tripIDs {
+		newStops, err := getStopsForTripID(driver, tripID)
+		if err != nil {
+			return data, err
+		}
+
+		for _, newStop := range newStops {
+			if _, ok := stopsMap[newStop]; ok {
+				// we already have such a stop. do nothing.
+			} else {
+				stopsMap[newStop] = struct{}{}
+			}
+		}
+	}
+
+	stops := make([]Stop, 0, len(stopsMap))
+	for stop := range stopsMap {
+		stops = append(stops, stop)
+	}
+	data.Stops = stops
+
+	log.Printf(`Received %d shapes and %d stops`, len(data.Shapes), len(data.Stops))
 	return data, nil
 }

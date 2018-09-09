@@ -670,7 +670,6 @@ func getStopsForTripID(driver bolt.Driver, tripID int) ([]Stop, error) {
 
 	log.Printf(`Received %d stops for trip id %d`, len(stops), tripID)
 	return stops, nil
-
 }
 
 type Shape struct {
@@ -678,9 +677,14 @@ type Shape struct {
 	Points  ShapePoints
 }
 
+type StopOnMap struct {
+	Stop
+	FirstOrLast bool
+}
+
 type MapData struct {
 	Shapes []Shape
-	Stops  []Stop
+	Stops  []StopOnMap
 }
 
 func getMapData(driver bolt.Driver, routeID, direction, stopName string) (MapData, error) {
@@ -709,25 +713,31 @@ func getMapData(driver bolt.Driver, routeID, direction, stopName string) (MapDat
 		data.Shapes = append(data.Shapes, Shape{shapeID, points})
 	}
 
-	stopsMap := map[Stop]struct{}{}
+	// value (bool) marks first or last stop in the trip
+	stopsMap := map[Stop]bool{}
 	for _, tripID := range tripIDs {
 		newStops, err := getStopsForTripID(driver, tripID)
 		if err != nil {
 			return data, err
 		}
 
-		for _, newStop := range newStops {
+		for idx, newStop := range newStops {
 			if _, ok := stopsMap[newStop]; ok {
 				// we already have such a stop. do nothing.
 			} else {
-				stopsMap[newStop] = struct{}{}
+				stopsMap[newStop] = false
+			}
+
+			// mark either first or last stop in the trip
+			if idx == 0 || idx == len(newStops)-1 {
+				stopsMap[newStop] = true
 			}
 		}
 	}
 
-	stops := make([]Stop, 0, len(stopsMap))
-	for stop := range stopsMap {
-		stops = append(stops, stop)
+	stops := make([]StopOnMap, 0, len(stopsMap))
+	for stop, firstOrLast := range stopsMap {
+		stops = append(stops, StopOnMap{stop, firstOrLast})
 	}
 	data.Stops = stops
 

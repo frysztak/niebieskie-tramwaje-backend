@@ -139,11 +139,11 @@ const getShapeQuery = `
 const getTripStopsQuery = `
 	MATCH p=(t:Trip {tripID: {tripID}})-[:starts_at]-(:StopTime)-[:next*]-(:StopTime)-[:ends_at]-(t)
     WITH filter(n in nodes(p) WHERE EXISTS(n.stopID)) as nodes
-    WITH extract(n in nodes | [n.stopID, n.stopSequence]) AS tuple
+    WITH extract(n in nodes | [n.stopID, n.stopSequence, n.onDemand]) AS tuple
     UNWIND tuple as tuples
-    WITH tuples[0] as stopID, tuples[1] as stopSequence
+    WITH tuples[0] as stopID, tuples[1] as stopSequence, tuples[2] as onDemand
 
     MATCH (s:Stop {stopID: stopID})
-    RETURN s.name, s.latitude, s.longitude
+    RETURN s.name, s.latitude, s.longitude, onDemand
     ORDER BY stopSequence
 `

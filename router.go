@@ -356,12 +356,16 @@ func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
 			return
 		}
 
-		// TODO: add no-cache
-		//cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
+		wrappedData, err := wrapJSON("upcomingDepartures", data)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		//w.Header().Set("Expires", cacheUntil)
+		w.Header().Set("Cache-Control", "no-cache")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(data)
+		w.Write(wrappedData)
 	}
 }
 

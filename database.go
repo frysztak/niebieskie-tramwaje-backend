@@ -23,8 +23,9 @@ func openDB() bolt.Driver {
 
 type Stop struct {
 	Name      string
-	Latitude  float32
-	Longitude float32
+	ID        int
+	Latitude  float64
+	Longitude float64
 }
 
 func getAllStops(driver bolt.Driver) ([]Stop, error) {
@@ -48,9 +49,10 @@ func getAllStops(driver bolt.Driver) ([]Stop, error) {
 			return stops, err
 		} else if err != io.EOF {
 			name := row[0].(string)
-			lat := row[1].(float64)
-			long := row[2].(float64)
-			stops = append(stops, Stop{name, float32(lat), float32(long)})
+			id := row[1].(int)
+			lat := row[3].(float64)
+			long := row[4].(float64)
+			stops = append(stops, Stop{name, id, lat, long})
 		}
 	}
 
@@ -688,10 +690,11 @@ func getStopsForTripID(driver bolt.Driver, tripID int) ([]StopOnDemand, error) {
 			return stops, err
 		} else if err != io.EOF {
 			name := row[0].(string)
+			stopID := row[0].(int64)
 			lat := row[1].(float64)
 			long := row[2].(float64)
 			onDemand := row[3].(bool)
-			stops = append(stops, StopOnDemand{Stop{name, float32(lat), float32(long)}, onDemand})
+			stops = append(stops, StopOnDemand{Stop{name, int(stopID), lat, long}, onDemand})
 		}
 	}
 
@@ -773,8 +776,7 @@ func getMapData(driver bolt.Driver, routeID, direction, stopName string) (MapDat
 }
 
 type UpcomingDeparture struct {
-	StopID        int
-	StopName      string
+	Stop          Stop `json:"-"`
 	TripID        int
 	DepartureTime string
 	RouteID       string
@@ -810,7 +812,6 @@ func acceptDeparture(departure UpcomingDeparture) bool {
 	// about date, and 'departureTime' doesn't. so we'll have to strip date from 'now'.
 
 	now = time.Date(1, 1, 1, now.Hour(), now.Minute(), 0, 0, loc)
-	log.Printf("departure: %s, now: %s", departureTime, now)
 
 	if err != nil {
 		panic(err)
@@ -820,13 +821,6 @@ func acceptDeparture(departure UpcomingDeparture) bool {
 	}
 	return false
 }
-
-type UpcomingDepartureStop struct {
-	StopID   int
-	StopName string
-}
-
-type UpcomingDeparturesMap map[int][]UpcomingDeparture
 
 func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]UpcomingDeparture, error) {
 	conn, err := driver.OpenNeo(URL)
@@ -856,12 +850,15 @@ func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]Up
 		} else if err != io.EOF {
 			stopID := row[0].(int64)
 			stopName := row[1].(string)
-			tripID := row[2].(int64)
-			departureTime := row[3].(string)
-			routeID := row[4].(string)
-			direction := row[5].(string)
+			latitude := row[2].(float64)
+			longitude := row[3].(float64)
+			tripID := row[4].(int64)
+			departureTime := row[5].(string)
+			routeID := row[6].(string)
+			direction := row[7].(string)
 
-			departure := UpcomingDeparture{int(stopID), stopName, int(tripID), normaliseTime(departureTime), routeID, direction}
+			stop := Stop{stopName, int(stopID), latitude, longitude}
+			departure := UpcomingDeparture{stop, int(tripID), normaliseTime(departureTime), routeID, direction}
 			if acceptDeparture(departure) {
 				departures = append(departures, departure)
 			}
@@ -884,15 +881,20 @@ func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]Up
 	return departures, nil
 }
 
-func getUpcomingDepartures(driver bolt.Driver, stopNames []string) (UpcomingDeparturesMap, error) {
-	departures := UpcomingDeparturesMap{}
+type UpcomingDepartures struct {
+	Stop       Stop
+	Departures []UpcomingDeparture
+}
+
+func getUpcomingDepartures(driver bolt.Driver, stopNames []string) ([]UpcomingDepartures, error) {
+	departures := map[int][]UpcomingDeparture{}
 	for _, stopName := range stopNames {
 		data, err := getUpcomingDeparturesForStopName(driver, stopName)
 		if err != nil {
 			return nil, err
 		}
 		for _, departure := range data {
-			key := departure.StopID
+			key := departure.Stop.ID
 			if val, ok := departures[key]; ok {
 				departures[key] = append(val, departure)
 			} else {
@@ -901,13 +903,18 @@ func getUpcomingDepartures(driver bolt.Driver, stopNames []string) (UpcomingDepa
 		}
 	}
 
+	result := make([]UpcomingDepartures, len(departures))
+	idx := 0
 	for key, list := range departures {
 		lastIdx := 5
 		if len(list) <= lastIdx {
 			lastIdx = len(list) - 1
 		}
 		departures[key] = list[0:lastIdx]
+
+		result[idx] = UpcomingDepartures{departures[key][0].Stop, departures[key]}
+		idx++
 	}
 
-	return departures, nil
+	return result, nil
 }

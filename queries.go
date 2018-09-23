@@ -2,7 +2,7 @@ package main
 
 const getAllStopNamesQuery = `
 	MATCH (s:Stop)
-    RETURN DISTINCT s.name, s.latitude, s.longitude
+    RETURN DISTINCT s.name, s.stopID, s.latitude, s.longitude
 	ORDER BY s.name;
 `
 
@@ -144,7 +144,7 @@ const getTripStopsQuery = `
     WITH tuples[0] as stopID, tuples[1] as stopSequence, tuples[2] as onDemand
 
     MATCH (s:Stop {stopID: stopID})
-    RETURN s.name, s.latitude, s.longitude, onDemand
+    RETURN s.name, s.stopID, s.latitude, s.longitude, onDemand
     ORDER BY stopSequence
 `
 
@@ -152,5 +152,5 @@ const getUpcomingDeparturesQuery = `
 	MATCH (stop:Stop {name: {stopName}})<-[:happens_at]-(st: StopTime)
 	WITH stop, st
 	MATCH (t:Trip {tripID: st.tripID} )
-	RETURN stop.stopID, stop.name, st.tripID, st.departureTime, t.routeID, t.headsign
-	`
+	RETURN stop.stopID, stop.name, stop.latitude, stop.longitude, st.tripID, st.departureTime, t.routeID, t.headsign
+`

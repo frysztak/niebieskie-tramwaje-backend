@@ -356,7 +356,7 @@ func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
 			return
 		}
 
-		wrappedData, err := wrapJSON("upcomingDepartures", data)
+		wrappedData, err := wrapJSON("departures", data)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -372,7 +372,7 @@ func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
 func createRouter(driver bolt.Driver) *mux.Router {
 	router := mux.NewRouter().UseEncodedPath()
 	router.HandleFunc("/stops", StopsHandler(driver))
-	router.HandleFunc("/stops/{stopNames}/upcomingDepartures", StopsUpcomingDeparturesHandler(driver))
+	router.HandleFunc("/stops/{stopNames}/departures", StopsUpcomingDeparturesHandler(driver))
 	router.HandleFunc("/stops/and/routes", StopsAndRoutesHandler(driver))
 	router.HandleFunc("/routes", RoutesHandler(driver))
 	router.HandleFunc("/routes/variants/id/{routeID}", RoutesVariantsByIdHandler(driver))

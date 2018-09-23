@@ -49,10 +49,10 @@ func getAllStops(driver bolt.Driver) ([]Stop, error) {
 			return stops, err
 		} else if err != io.EOF {
 			name := row[0].(string)
-			id := row[1].(int)
-			lat := row[3].(float64)
-			long := row[4].(float64)
-			stops = append(stops, Stop{name, id, lat, long})
+			id := row[1].(int64)
+			lat := row[2].(float64)
+			long := row[3].(float64)
+			stops = append(stops, Stop{name, int(id), lat, long})
 		}
 	}
 

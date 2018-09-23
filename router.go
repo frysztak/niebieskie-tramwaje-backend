@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -340,9 +341,34 @@ func RouteMapHandler(driver bolt.Driver) Handler {
 	}
 }
 
+func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		stopNames, err := url.QueryUnescape(vars["stopNames"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		data, err := getUpcomingDepartures(driver, strings.Split(stopNames, ","))
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		// TODO: add no-cache
+		//cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
+		w.Header().Set("Content-Type", "application/json")
+		//w.Header().Set("Expires", cacheUntil)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
+	}
+}
+
 func createRouter(driver bolt.Driver) *mux.Router {
 	router := mux.NewRouter().UseEncodedPath()
 	router.HandleFunc("/stops", StopsHandler(driver))
+	router.HandleFunc("/stops/{stopNames}/upcomingDepartures", StopsUpcomingDeparturesHandler(driver))
 	router.HandleFunc("/stops/and/routes", StopsAndRoutesHandler(driver))
 	router.HandleFunc("/routes", RoutesHandler(driver))
 	router.HandleFunc("/routes/variants/id/{routeID}", RoutesVariantsByIdHandler(driver))

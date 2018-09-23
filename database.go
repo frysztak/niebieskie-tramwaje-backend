@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 	"io"
 	"log"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	bolt "github.com/johnnadratowski/golang-neo4j-bolt-driver"
 )
 
 const (
@@ -768,4 +770,144 @@ func getMapData(driver bolt.Driver, routeID, direction, stopName string) (MapDat
 
 	log.Printf(`Received %d shapes and %d stops`, len(data.Shapes), len(data.Stops))
 	return data, nil
+}
+
+type UpcomingDeparture struct {
+	StopID        int
+	StopName      string
+	TripID        int
+	DepartureTime string
+	RouteID       string
+	Direction     string
+}
+
+func acceptDeparture(departure UpcomingDeparture) bool {
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	now := time.Now().In(loc)
+
+	dayTypeMapping := map[time.Weekday]DayType{
+		time.Monday:    Weekday,
+		time.Tuesday:   Weekday,
+		time.Wednesday: Weekday,
+		time.Thursday:  Weekday,
+		time.Friday:    Weekday,
+		time.Saturday:  Saturday,
+		time.Sunday:    Sunday,
+	}
+
+	currentDayType := dayTypeMapping[now.Weekday()]
+	departureDayType := getDayTypeFromTripID(departure.TripID)
+	if currentDayType != departureDayType {
+		return false
+	}
+
+	timeLayout := "15:04"
+	departureTime, err := time.ParseInLocation(timeLayout, departure.DepartureTime, loc)
+	// make sure that 'departureTime' and 'now' have the same date, otherwise .After() doesn't work
+	departureTime = time.Date(1, 1, 1, departureTime.Hour(), departureTime.Minute(), 0, 0, loc)
+
+	// we can't directly compare 'departureTime' and 'now' because 'now' contains information
+	// about date, and 'departureTime' doesn't. so we'll have to strip date from 'now'.
+
+	now = time.Date(1, 1, 1, now.Hour(), now.Minute(), 0, 0, loc)
+	log.Printf("departure: %s, now: %s", departureTime, now)
+
+	if err != nil {
+		panic(err)
+	}
+	if departureTime.After(now) {
+		return true
+	}
+	return false
+}
+
+type UpcomingDepartureStop struct {
+	StopID   int
+	StopName string
+}
+
+type UpcomingDeparturesMap map[int][]UpcomingDeparture
+
+func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]UpcomingDeparture, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getUpcomingDeparturesQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"stopName": stopName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var departures []UpcomingDeparture
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return departures, err
+		} else if err != io.EOF {
+			stopID := row[0].(int64)
+			stopName := row[1].(string)
+			tripID := row[2].(int64)
+			departureTime := row[3].(string)
+			routeID := row[4].(string)
+			direction := row[5].(string)
+
+			departure := UpcomingDeparture{int(stopID), stopName, int(tripID), normaliseTime(departureTime), routeID, direction}
+			if acceptDeparture(departure) {
+				departures = append(departures, departure)
+			}
+		}
+	}
+
+	log.Printf(`Received %d departure times for stopName %s`, len(departures), stopName)
+	loc, _ := time.LoadLocation("Europe/Warsaw")
+	now := time.Now().In(loc)
+	now = time.Date(1, 1, 1, now.Hour(), now.Minute(), 0, 0, loc)
+
+	timeLayout := "15:04"
+
+	sort.Slice(departures, func(i, j int) bool {
+		departureTimeA, _ := time.ParseInLocation(timeLayout, departures[i].DepartureTime, loc)
+		departureTimeB, _ := time.ParseInLocation(timeLayout, departures[j].DepartureTime, loc)
+		return departureTimeA.Sub(now) < departureTimeB.Sub(now)
+	})
+
+	return departures, nil
+}
+
+func getUpcomingDepartures(driver bolt.Driver, stopNames []string) (UpcomingDeparturesMap, error) {
+	departures := UpcomingDeparturesMap{}
+	for _, stopName := range stopNames {
+		data, err := getUpcomingDeparturesForStopName(driver, stopName)
+		if err != nil {
+			return nil, err
+		}
+		for _, departure := range data {
+			key := departure.StopID
+			if val, ok := departures[key]; ok {
+				departures[key] = append(val, departure)
+			} else {
+				departures[key] = []UpcomingDeparture{departure}
+			}
+		}
+	}
+
+	for key, list := range departures {
+		lastIdx := 5
+		if len(list) <= lastIdx {
+			lastIdx = len(list) - 1
+		}
+		departures[key] = list[0:lastIdx]
+	}
+
+	return departures, nil
 }

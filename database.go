@@ -817,7 +817,7 @@ func acceptDeparture(departure UpcomingDeparture) bool {
 	if err != nil {
 		panic(err)
 	}
-	if departureTime.After(now) {
+	if departureTime == now || departureTime.After(now) {
 		return true
 	}
 	return false

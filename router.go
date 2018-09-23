@@ -356,16 +356,10 @@ func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
 			return
 		}
 
-		wrappedData, err := wrapJSON("departures", data)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.WriteHeader(http.StatusOK)
-		w.Write(wrappedData)
+		json.NewEncoder(w).Encode(data)
 	}
 }
 

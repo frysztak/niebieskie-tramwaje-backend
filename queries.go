@@ -151,6 +151,6 @@ const getTripStopsQuery = `
 const getUpcomingDeparturesQuery = `
 	MATCH (stop:Stop {name: {stopName}})<-[:happens_at]-(st: StopTime)
 	WITH stop, st
-	MATCH (t:Trip {tripID: st.tripID} )
-	RETURN stop.stopID, stop.name, stop.latitude, stop.longitude, st.tripID, st.departureTime, t.routeID, t.headsign
+	MATCH (t:Trip {tripID: st.tripID})
+	RETURN stop.stopID, stop.name, stop.latitude, stop.longitude, st.tripID, st.departureTime, st.onDemand, t.routeID, t.headsign
 `

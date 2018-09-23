@@ -779,6 +779,7 @@ type UpcomingDeparture struct {
 	Stop          Stop `json:"-"`
 	TripID        int
 	DepartureTime string
+	OnDemand      bool
 	RouteID       string
 	Direction     string
 }
@@ -854,11 +855,12 @@ func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]Up
 			longitude := row[3].(float64)
 			tripID := row[4].(int64)
 			departureTime := row[5].(string)
-			routeID := row[6].(string)
-			direction := row[7].(string)
+			onDemand := row[6].(bool)
+			routeID := row[7].(string)
+			direction := row[8].(string)
 
 			stop := Stop{stopName, int(stopID), latitude, longitude}
-			departure := UpcomingDeparture{stop, int(tripID), normaliseTime(departureTime), routeID, direction}
+			departure := UpcomingDeparture{stop, int(tripID), normaliseTime(departureTime), onDemand, routeID, direction}
 			if acceptDeparture(departure) {
 				departures = append(departures, departure)
 			}

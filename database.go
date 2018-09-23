@@ -288,29 +288,13 @@ func getTimetable(driver bolt.Driver, routeID string, stopName string, direction
 
 			entry := TimeTableEntry{tripID, arrivalTime, departureTime}
 
-			tripIDString := strconv.Itoa(tripID)
-			switch prefix := tripIDString[0]; prefix {
-			case '2': // Monday-Thursday
-				fallthrough
-			case '6':
+			switch dayType := getDayTypeFromTripID(tripID); dayType {
+			case Weekday:
 				timeTable.Weekdays = append(timeTable.Weekdays, entry)
-
-			case '8': // Friday
-				fallthrough
-			case '1': // it's actual '10', but we can cheat a little
-				// ignore.
-				// for some reason, in Wrocław GTFS they make distinction between
-				// Mondays-Thurdays and Fridays. To the best of my knowledge,
-				// there is no difference whatsoever.
-
-			case '3':
+			case Saturday:
 				timeTable.Saturdays = append(timeTable.Saturdays, entry)
-
-			case '4':
+			case Sunday:
 				timeTable.Sundays = append(timeTable.Sundays, entry)
-
-			default:
-				panic(fmt.Sprintf("Unknown prefix: %d", prefix))
 			}
 		}
 	}
@@ -320,6 +304,41 @@ func getTimetable(driver bolt.Driver, routeID string, stopName string, direction
 
 	log.Printf(`Received %d time table entries for route ID "%s", stop name "%s" and direction "%s"`, len(timeTable.Weekdays)+len(timeTable.Saturdays)+len(timeTable.Sundays), routeID, stopName, direction)
 	return timeTable, nil
+}
+
+type DayType int
+
+const (
+	Weekday  DayType = 0
+	Saturday DayType = 1
+	Sunday   DayType = 2
+)
+
+func getDayTypeFromTripID(tripID int) DayType {
+	tripIDString := strconv.Itoa(tripID)
+	switch prefix := tripIDString[0]; prefix {
+	case '2': // Monday-Thursday
+		fallthrough
+	case '6':
+		fallthrough
+	case '8': // Friday
+		fallthrough
+	case '1': // it's actual '10', but we can cheat a little
+		// ignore.
+		// for some reason, in Wrocław GTFS they make distinction between
+		// Mondays-Thurdays and Fridays. To the best of my knowledge,
+		// there is no difference whatsoever.
+		return Weekday
+
+	case '3':
+		return Saturday
+
+	case '4':
+		return Sunday
+
+	default:
+		panic(fmt.Sprintf("Unknown tripID prefix: %d", prefix))
+	}
 }
 
 type RouteInfo struct {

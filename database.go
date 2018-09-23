@@ -908,7 +908,7 @@ func getUpcomingDepartures(driver bolt.Driver, stopNames []string) ([]UpcomingDe
 	for key, list := range departures {
 		lastIdx := 5
 		if len(list) <= lastIdx {
-			lastIdx = len(list) - 1
+			lastIdx = len(list)
 		}
 		departures[key] = list[0:lastIdx]
 

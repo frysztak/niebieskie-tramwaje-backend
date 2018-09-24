@@ -868,18 +868,6 @@ func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]Up
 	}
 
 	log.Printf(`Received %d departure times for stopName %s`, len(departures), stopName)
-	loc, _ := time.LoadLocation("Europe/Warsaw")
-	now := time.Now().In(loc)
-	now = time.Date(1, 1, 1, now.Hour(), now.Minute(), 0, 0, loc)
-
-	timeLayout := "15:04"
-
-	sort.Slice(departures, func(i, j int) bool {
-		departureTimeA, _ := time.ParseInLocation(timeLayout, departures[i].DepartureTime, loc)
-		departureTimeB, _ := time.ParseInLocation(timeLayout, departures[j].DepartureTime, loc)
-		return departureTimeA.Sub(now) < departureTimeB.Sub(now)
-	})
-
 	return departures, nil
 }
 

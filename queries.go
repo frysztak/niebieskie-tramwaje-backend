@@ -153,4 +153,5 @@ const getUpcomingDeparturesQuery = `
 	WITH stop, st
 	MATCH (t:Trip {tripID: st.tripID})
 	RETURN stop.stopID, stop.name, stop.latitude, stop.longitude, st.tripID, st.departureTime, st.onDemand, t.routeID, t.headsign
+	ORDER BY st.departureTime
 `

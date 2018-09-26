@@ -1,4 +1,4 @@
-package main
+package GTFS
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ const (
 	URL = "bolt://neo4j:krowa@localhost:7687"
 )
 
-func openDB() bolt.Driver {
+func OpenDB() bolt.Driver {
 	log.Print("Creating driver...")
 	return bolt.NewDriver()
 }

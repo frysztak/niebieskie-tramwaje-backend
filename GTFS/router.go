@@ -1,4 +1,4 @@
-package main
+package GTFS
 
 import (
 	"encoding/json"
@@ -363,7 +363,7 @@ func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
 	}
 }
 
-func createRouter(driver bolt.Driver) *mux.Router {
+func CreateRouter(driver bolt.Driver) *mux.Router {
 	router := mux.NewRouter().UseEncodedPath()
 	router.HandleFunc("/stops", StopsHandler(driver))
 	router.HandleFunc("/stops/{stopNames}/departures", StopsUpcomingDeparturesHandler(driver))

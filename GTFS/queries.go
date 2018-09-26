@@ -1,4 +1,4 @@
-package main
+package GTFS
 
 const getAllStopNamesQuery = `
 	MATCH (s:Stop)

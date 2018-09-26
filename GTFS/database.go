@@ -823,6 +823,13 @@ func acceptDeparture(departure UpcomingDeparture) bool {
 	return false
 }
 
+func isDuplicate(a, b UpcomingDeparture) bool {
+	return a.DepartureTime == b.DepartureTime &&
+		a.OnDemand == b.OnDemand &&
+		a.RouteID == b.RouteID &&
+		a.Direction == b.Direction
+}
+
 func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]UpcomingDeparture, error) {
 	conn, err := driver.OpenNeo(URL)
 	if err != nil {
@@ -843,6 +850,10 @@ func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]Up
 	}
 
 	var departures []UpcomingDeparture
+
+	// used to filter out the same departures with differing tripIDs
+	// (especially tripID prefix -- entries for weekday and friday often get duplicated here)
+	var previousDeparture *UpcomingDeparture = nil
 	for err == nil {
 		var row []interface{}
 		row, _, err = rows.NextNeo()
@@ -861,25 +872,16 @@ func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]Up
 
 			stop := Stop{stopName, int(stopID), latitude, longitude}
 			departure := UpcomingDeparture{stop, int(tripID), normaliseTime(departureTime), onDemand, routeID, direction}
-			if acceptDeparture(departure) {
+
+			if acceptDeparture(departure) && previousDeparture != nil && !isDuplicate(departure, *previousDeparture) {
 				departures = append(departures, departure)
 			}
+
+			previousDeparture = &departure
 		}
 	}
 
 	log.Printf(`Received %d departure times for stopName %s`, len(departures), stopName)
-	loc, _ := time.LoadLocation("Europe/Warsaw")
-	now := time.Now().In(loc)
-	now = time.Date(1, 1, 1, now.Hour(), now.Minute(), 0, 0, loc)
-
-	timeLayout := "15:04"
-
-	sort.Slice(departures, func(i, j int) bool {
-		departureTimeA, _ := time.ParseInLocation(timeLayout, departures[i].DepartureTime, loc)
-		departureTimeB, _ := time.ParseInLocation(timeLayout, departures[j].DepartureTime, loc)
-		return departureTimeA.Sub(now) < departureTimeB.Sub(now)
-	})
-
 	return departures, nil
 }
 

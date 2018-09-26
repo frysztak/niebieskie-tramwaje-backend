@@ -26,6 +26,7 @@ func main() {
 	router.HandleFunc("/route/{routeID}/stops", GTFS.RouteStopsHandler(driver))
 	router.HandleFunc("/route/{routeID}/map/at/{stopName}/direction/{direction}", GTFS.RouteMapHandler(driver))
 	router.HandleFunc("/trip/{tripID}/timeline", GTFS.TripTimelineHandler(driver))
+	router.HandleFunc("/trip/{tripID}/map", GTFS.TripMapHandler(driver))
 
 	go func() {
 		log.Fatal(http.ListenAndServe(":8080", router))

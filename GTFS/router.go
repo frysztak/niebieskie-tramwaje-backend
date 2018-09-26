@@ -362,3 +362,27 @@ func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
 		json.NewEncoder(w).Encode(data)
 	}
 }
+
+func TripMapHandler(driver bolt.Driver) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		tripIDString, err := url.QueryUnescape(vars["tripID"])
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		tripID, err := strconv.ParseInt(tripIDString, 10, 32)
+		data, err := getMapDataForTripID(driver, int(tripID))
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+
+		cacheUntil := time.Now().AddDate(0, 0, 1).Format(http.TimeFormat)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Expires", cacheUntil)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
+	}
+}

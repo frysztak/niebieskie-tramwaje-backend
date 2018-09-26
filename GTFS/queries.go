@@ -148,6 +148,14 @@ const getTripStopsQuery = `
     ORDER BY stopSequence
 `
 
+const getShapeForTripIDQuery = `
+	MATCH (t: Trip{tripID: {tripID}})
+	WITH t.shapeID as shapeID
+	MATCH (s: ShapePoint {shapeID: shapeID})
+	RETURN s.shapeID, s.shapeSequence, s.latitude, s.longitude
+	ORDER BY s.shapeSequence
+`
+
 const getUpcomingDeparturesQuery = `
 	MATCH (stop:Stop {name: {stopName}})<-[:happens_at]-(st: StopTime)
 	WITH stop, st

@@ -658,6 +658,44 @@ func getShapePoints(driver bolt.Driver, shapeID int) (ShapePoints, error) {
 	return data, nil
 }
 
+func getShapePointsForTripID(driver bolt.Driver, tripID int) (ShapePoints, error) {
+	conn, err := driver.OpenNeo(URL)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	stmt, err := conn.PrepareNeo(getShapeForTripIDQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := stmt.QueryNeo(map[string]interface{}{
+		"tripID": tripID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var data ShapePoints
+	for err == nil {
+		var row []interface{}
+		row, _, err = rows.NextNeo()
+		if err != nil && err != io.EOF {
+			return data, err
+		} else if err != io.EOF {
+			shapeID := int(row[0].(int64))
+			shapeSeq := int(row[1].(int64))
+			lat := float32(row[2].(float64))
+			lon := float32(row[3].(float64))
+			data = append(data, ShapePoint{shapeID, shapeSeq, lat, lon})
+		}
+	}
+
+	log.Printf(`Received %d shape-points for trip id %d`, len(data), tripID)
+	return data, nil
+}
+
 type StopOnDemand struct {
 	Stop
 	OnDemand bool
@@ -690,10 +728,10 @@ func getStopsForTripID(driver bolt.Driver, tripID int) ([]StopOnDemand, error) {
 			return stops, err
 		} else if err != io.EOF {
 			name := row[0].(string)
-			stopID := row[0].(int64)
-			lat := row[1].(float64)
-			long := row[2].(float64)
-			onDemand := row[3].(bool)
+			stopID := row[1].(int64)
+			lat := row[2].(float64)
+			long := row[3].(float64)
+			onDemand := row[4].(bool)
 			stops = append(stops, StopOnDemand{Stop{name, int(stopID), lat, long}, onDemand})
 		}
 	}
@@ -762,6 +800,46 @@ func getMapData(driver bolt.Driver, routeID, direction, stopName string) (MapDat
 			if idx == 0 || idx == len(newStops)-1 {
 				stopsMap[newStop] = true
 			}
+		}
+	}
+
+	stops := make([]StopOnMap, 0, len(stopsMap))
+	for stop, firstOrLast := range stopsMap {
+		stops = append(stops, StopOnMap{stop, firstOrLast})
+	}
+	data.Stops = stops
+
+	log.Printf(`Received %d shapes and %d stops`, len(data.Shapes), len(data.Stops))
+	return data, nil
+}
+
+func getMapDataForTripID(driver bolt.Driver, tripID int) (MapData, error) {
+	var data MapData
+
+	points, err := getShapePointsForTripID(driver, tripID)
+	if err != nil || len(points) == 0 {
+		return data, err
+	}
+	shapeID := points[0].ShapeID
+	data.Shapes = append(data.Shapes, Shape{shapeID, points})
+
+	// value (bool) marks first or last stop in the trip
+	stopsMap := map[StopOnDemand]bool{}
+	newStops, err := getStopsForTripID(driver, tripID)
+	if err != nil {
+		return data, err
+	}
+
+	for idx, newStop := range newStops {
+		if _, ok := stopsMap[newStop]; ok {
+			// we already have such a stop. do nothing.
+		} else {
+			stopsMap[newStop] = false
+		}
+
+		// mark either first or last stop in the trip
+		if idx == 0 || idx == len(newStops)-1 {
+			stopsMap[newStop] = true
 		}
 	}
 

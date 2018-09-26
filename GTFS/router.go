@@ -362,21 +362,3 @@ func StopsUpcomingDeparturesHandler(driver bolt.Driver) Handler {
 		json.NewEncoder(w).Encode(data)
 	}
 }
-
-func CreateRouter(driver bolt.Driver) *mux.Router {
-	router := mux.NewRouter().UseEncodedPath()
-	router.HandleFunc("/stops", StopsHandler(driver))
-	router.HandleFunc("/stops/{stopNames}/departures", StopsUpcomingDeparturesHandler(driver))
-	router.HandleFunc("/stops/and/routes", StopsAndRoutesHandler(driver))
-	router.HandleFunc("/routes", RoutesHandler(driver))
-	router.HandleFunc("/routes/variants/id/{routeID}", RoutesVariantsByIdHandler(driver))
-	router.HandleFunc("/routes/variants/stop/{stopName}", RoutesVariantsByStopNameHandler(driver))
-	router.HandleFunc("/route/{routeID}/timetable/at/{stopName}/direction/{direction}", RoutesTimeTableHandler(driver))
-	router.HandleFunc("/route/{routeID}/info", RouteInfoHandler(driver))
-	router.HandleFunc("/route/{routeID}/directions", RouteDirectionsHandler(driver))
-	router.HandleFunc("/route/{routeID}/directions/through/{stopName}", RouteDirectionsThroughStopHandler(driver))
-	router.HandleFunc("/route/{routeID}/stops", RouteStopsHandler(driver))
-	router.HandleFunc("/route/{routeID}/map/at/{stopName}/direction/{direction}", RouteMapHandler(driver))
-	router.HandleFunc("/trip/{tripID}/timeline", TripTimelineHandler(driver))
-	return router
-}

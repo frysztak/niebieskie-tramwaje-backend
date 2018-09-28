@@ -22,17 +22,18 @@ func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 	log.Printf("Getting url %s", url)
 	res, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+		log.Printf("status code error: %d %s", res.StatusCode, res.Status)
 	}
 
 	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	pageTitle := doc.Find(".page-title")
@@ -41,13 +42,13 @@ func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 
 	infoParagraphs := doc.Find(".paragraph-info p")
 	if infoParagraphs.Length() == 0 {
-		log.Fatalf("No info paragraphs found for url %s", url)
+		log.Printf("No info paragraphs found for url %s", url)
 	}
 	affectsLines, affectsDays := parseInfoParagraph(url, infoParagraphs)
 
 	body, bodyErr := doc.Find(".field-item").First().Html()
 	if bodyErr != nil {
-		log.Fatalf("Body is nil for url %s", url)
+		log.Printf("Body is nil for url %s", url)
 	}
 
 	newsStub.Title = cleanUpTitle(title)
@@ -65,19 +66,19 @@ func parseInfoParagraph(url string, paragraphs *goquery.Selection) (string, stri
 	paragraphs.Each(func(i int, s *goquery.Selection) {
 		text, err := s.Html()
 		if err != nil {
-			log.Fatalf("paragraph -> Html is nil for url %s", url)
+			log.Panicf("paragraph -> Html is nil for url %s", url)
 		}
 		if strings.Contains(text, "Dotyczy linii") {
 			parts := strings.Split(text, ":")
 			if len(parts) == 0 {
-				log.Fatalf("affectsLine -> len(parts) == 0 for url %s", url)
+				log.Panicf("affectsLine -> len(parts) == 0 for url %s", url)
 			}
 
 			affectsLines = parts[len(parts)-1]
 		} else if strings.Contains(text, "Obowiązuje w dniach") {
 			parts := strings.Split(text, ":")
 			if len(parts) == 0 {
-				log.Fatalf("affectsDays -> len(parts) == 0 for url %s", url)
+				log.Panicf("affectsDays -> len(parts) == 0 for url %s", url)
 			}
 
 			affectsDays = parts[len(parts)-1]

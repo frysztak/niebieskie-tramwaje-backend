@@ -19,24 +19,25 @@ func crawlPage(url string, ch chan NewsItem, chFinished chan bool) {
 	log.Printf("Getting url %s", url)
 	res, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
-		log.Fatalf("status code error: %d %s", res.StatusCode, res.Status)
+		log.Printf("status code error: %d %s", res.StatusCode, res.Status)
 	}
 
 	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	doc.Find(".info").Each(func(i int, s *goquery.Selection) {
 		aTag := s.Find(".title a")
 		newsUrl, linkExists := aTag.Attr("href")
 		if linkExists == false {
-			log.Fatalf("news url doesnt exist at block %d at page %s", i, url)
+			log.Printf("news url doesnt exist at block %d at page %s", i, url)
 		}
 
 		teaser := s.Find(".teaser")

@@ -41,8 +41,23 @@ func insertNewsIntoDB(db *sqlx.DB, news []NewsItem) {
 	err := tx.Commit()
 
 	if err != nil {
-		log.Fatalf("DB commit failed: %s", err)
+		log.Panic("DB commit failed: %s", err)
 	}
 	log.Println("Commited to DB")
+}
 
+const itemsPerPage = 10
+
+func getNews(db *sqlx.DB, limit int, page int) []NewsItem {
+	log.Printf("Retrieving news, page %d, limit %d", page, limit)
+	news := []NewsItem{}
+
+	if db == nil {
+		panic("DB is nil")
+		return news
+	}
+
+	offset := page * itemsPerPage
+	db.Select(&news, "SELECT * FROM news LIMIT $1 OFFSET $2", limit, offset)
+	return news
 }

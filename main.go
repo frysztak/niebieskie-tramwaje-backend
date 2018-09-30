@@ -11,6 +11,7 @@ import (
 
 func main() {
 	driver := GTFS.OpenDB()
+	newsDb := News.OpenDatabase()
 
 	router := mux.NewRouter().UseEncodedPath()
 	router.HandleFunc("/stops", GTFS.StopsHandler(driver))
@@ -27,12 +28,12 @@ func main() {
 	router.HandleFunc("/route/{routeID}/map/at/{stopName}/direction/{direction}", GTFS.RouteMapHandler(driver))
 	router.HandleFunc("/trip/{tripID}/timeline", GTFS.TripTimelineHandler(driver))
 	router.HandleFunc("/trip/{tripID}/map", GTFS.TripMapHandler(driver))
+	router.HandleFunc("/news/recent", News.RecentNewsHandler(newsDb))
+	router.HandleFunc("/news/page/{pageNum}", News.NewsHandler(newsDb))
 
 	go func() {
 		log.Fatal(http.ListenAndServe(":8080", router))
 	}()
-
-	newsDb := News.OpenDatabase()
 
 	c := cron.New()
 	c.AddFunc("@every 15m", func() { News.UpdateNews(newsDb) })

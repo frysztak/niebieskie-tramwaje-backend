@@ -4,11 +4,18 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"log"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 )
+
+func getSleepTime() time.Duration {
+	r := rand.Intn(1000)
+	return 500 + time.Duration(r)*time.Millisecond
+}
 
 func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 	defer func() {
@@ -20,6 +27,7 @@ func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 
 	// Request the HTML page.
 	log.Printf("Getting url %s", url)
+	time.Sleep(getSleepTime())
 	res, err := http.Get(url)
 	if err != nil {
 		log.Print(err)

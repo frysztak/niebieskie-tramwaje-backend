@@ -40,9 +40,9 @@ func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 	publishedOn := pageTitle.Find(".timestamp").Text()
 	title := pageTitle.Find("h1").Text()
 
-	infoParagraphs := doc.Find(".paragraph-info p")
-	if infoParagraphs.Length() == 0 {
-		log.Printf("No info paragraphs found for url %s", url)
+	infoParagraphs := doc.Find(".paragraph-info")
+	if infoParagraphs.Length() != 1 {
+		log.Panicf("Expected 1 paragraph-info for url %s", url)
 	}
 	affectsLines, affectsDays := parseInfoParagraph(url, infoParagraphs)
 
@@ -60,30 +60,30 @@ func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 	log.Printf("Found news article. Title: '%s', publishedOn: '%s', affectsLines: '%s', affectsDays: '%s'", title, publishedOn, affectsLines, affectsDays)
 }
 
-func parseInfoParagraph(url string, paragraphs *goquery.Selection) (string, string) {
+func parseInfoParagraph(url string, paragraph *goquery.Selection) (string, string) {
 	var affectsLines string
 	var affectsDays string
-	paragraphs.Each(func(i int, s *goquery.Selection) {
-		text, err := s.Html()
-		if err != nil {
-			log.Panicf("paragraph -> Html is nil for url %s", url)
-		}
-		if strings.Contains(text, "Dotyczy linii") {
-			parts := strings.Split(text, ":")
+	text := paragraph.Text()
+	text = strings.TrimSpace(text)
+	lines := strings.Split(text, "\n")
+
+	for _, line := range lines {
+		if strings.Contains(line, "Dotyczy linii") {
+			parts := strings.Split(line, ":")
 			if len(parts) == 0 {
 				log.Panicf("affectsLine -> len(parts) == 0 for url %s", url)
 			}
 
 			affectsLines = parts[len(parts)-1]
-		} else if strings.Contains(text, "Obowiązuje w dniach") {
-			parts := strings.Split(text, ":")
+		} else if strings.Contains(line, "Obowiązuje w dniach") {
+			parts := strings.Split(line, ":")
 			if len(parts) == 0 {
 				log.Panicf("affectsDays -> len(parts) == 0 for url %s", url)
 			}
 
 			affectsDays = parts[len(parts)-1]
 		}
-	})
+	}
 
 	return strings.TrimSpace(affectsLines), strings.TrimSpace(affectsDays)
 }

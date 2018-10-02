@@ -10,7 +10,7 @@ const schema = `
 CREATE TABLE IF NOT EXISTS news (
 	url TEXT PRIMARY KEY UNIQUE,
 	title TEXT,
-	published_on TEXT,
+	published_on DATETIME,
 	synopsis TEXT,
 	affects_lines TEXT,
 	affects_days TEXT,

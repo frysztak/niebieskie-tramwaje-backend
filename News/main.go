@@ -2,16 +2,17 @@ package News
 
 import (
 	"github.com/jmoiron/sqlx"
+	"time"
 )
 
 type NewsItem struct {
-	Url          string `db:"url"`
-	Title        string `db:"title"`
-	PublishedOn  string `db:"published_on"`
-	Synopsis     string `db:"synopsis"`
-	AffectsLines string `db:"affects_lines"`
-	AffectsDay   string `db:"affects_days"`
-	Body         string `db:"body"`
+	Url          string    `db:"url"`
+	Title        string    `db:"title"`
+	PublishedOn  time.Time `db:"published_on"`
+	Synopsis     string    `db:"synopsis"`
+	AffectsLines string    `db:"affects_lines"`
+	AffectsDay   string    `db:"affects_days"`
+	Body         string    `db:"body"`
 }
 
 func UpdateNews(db *sqlx.DB) {

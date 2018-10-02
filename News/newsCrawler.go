@@ -60,7 +60,7 @@ func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 	}
 
 	newsStub.Title = cleanUpTitle(title)
-	newsStub.PublishedOn = publishedOn
+	newsStub.PublishedOn = parsePublishedDateTime(publishedOn)
 	newsStub.AffectsDay = affectsDays
 	newsStub.AffectsLines = affectsLines
 	newsStub.Body = fixImageUrls(body)
@@ -113,6 +113,16 @@ func cleanUpTitle(title string) string {
 	title = parts[1]
 	upperCaseLetter := unicode.ToUpper(rune(title[0]))
 	return replaceAtIndex(title, upperCaseLetter, 0)
+}
+
+func parsePublishedDateTime(publishedOn string) time.Time {
+	layout := "02.01.2006 15:04"
+	t, err := time.Parse(layout, publishedOn)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return t
 }
 
 // https://stackoverflow.com/a/24894202

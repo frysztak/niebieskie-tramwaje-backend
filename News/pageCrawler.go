@@ -52,7 +52,7 @@ func crawlPage(url string, ch chan NewsItem, chFinished chan bool) {
 	})
 }
 
-const nPages = 1
+const nPages = 10
 
 func getNewsStubs(seedUrl string) []NewsItem {
 	newsStubs := make([]NewsItem, 0)

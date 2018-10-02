@@ -58,6 +58,9 @@ func getNews(db *sqlx.DB, limit int, page int) []NewsItem {
 	}
 
 	offset := page * itemsPerPage
-	db.Select(&news, "SELECT * FROM news LIMIT $1 OFFSET $2", limit, offset)
+	db.Select(&news, `
+		SELECT * FROM news
+		ORDER BY published_on DESC
+		LIMIT $1 OFFSET $2`, limit, offset)
 	return news
 }

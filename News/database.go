@@ -4,6 +4,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"os/user"
+	"path"
 )
 
 const schema = `
@@ -20,7 +22,16 @@ CREATE TABLE IF NOT EXISTS news (
 
 func OpenDatabase() *sqlx.DB {
 	log.Println("Opening database...")
-	db, err := sqlx.Connect("sqlite3", "storage.db")
+
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbPath := path.Join(usr.HomeDir, "MPK-API", "storage.db")
+	log.Printf("DB path: %s", dbPath)
+
+	db, err := sqlx.Connect("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalln(err)
 	}

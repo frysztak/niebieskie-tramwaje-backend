@@ -967,11 +967,13 @@ func getUpcomingDeparturesForStopName(driver bolt.Driver, stopName string) ([]Up
 			stop := Stop{stopName, int(stopID), latitude, longitude}
 			departure := UpcomingDeparture{stop, int(tripID), normaliseTime(departureTime), onDemand, routeID, direction}
 
-			if acceptDeparture(departure) && previousDeparture != nil && !isDuplicate(departure, *previousDeparture) {
+			if acceptDeparture(departure) {
+				if previousDeparture != nil && isDuplicate(departure, *previousDeparture) {
+					continue
+				}
 				departures = append(departures, departure)
+				previousDeparture = &departure
 			}
-
-			previousDeparture = &departure
 		}
 	}
 

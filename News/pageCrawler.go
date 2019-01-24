@@ -2,14 +2,15 @@ package News
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"log"
 	"net/http"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const baseUrl = "http://mpk.wroc.pl"
 
-func crawlPage(url string, ch chan NewsItem, chFinished chan bool) {
+func crawlPage(client http.Client, url string, ch chan NewsItem, chFinished chan bool) {
 	defer func() {
 		// Notify that we're done after this function
 		chFinished <- true
@@ -17,7 +18,7 @@ func crawlPage(url string, ch chan NewsItem, chFinished chan bool) {
 
 	// Request the HTML page.
 	log.Printf("Getting url %s", url)
-	res, err := http.Get(url)
+	res, err := client.Get(url)
 	if err != nil {
 		log.Print(err)
 		return
@@ -54,7 +55,7 @@ func crawlPage(url string, ch chan NewsItem, chFinished chan bool) {
 
 const nPages = 10
 
-func getNewsStubs(seedUrl string) []NewsItem {
+func getNewsStubs(client http.Client, seedUrl string) []NewsItem {
 	newsStubs := make([]NewsItem, 0)
 	seedUrls := make([]string, nPages)
 	for idx := 0; idx < nPages; idx++ {
@@ -67,7 +68,7 @@ func getNewsStubs(seedUrl string) []NewsItem {
 
 	// Kick off the crawl process (concurrently)
 	for _, url := range seedUrls {
-		go crawlPage(url, chNewsStubs, chFinished)
+		go crawlPage(client, url, chNewsStubs, chFinished)
 	}
 
 	// Subscribe to both channels

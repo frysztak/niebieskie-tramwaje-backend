@@ -1,8 +1,10 @@
 package News
 
 import (
-	"github.com/jmoiron/sqlx"
+	"net/http"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type NewsItem struct {
@@ -17,7 +19,13 @@ type NewsItem struct {
 
 func UpdateNews(db *sqlx.DB) {
 	seedUrl := "http://mpk.wroc.pl/informacje/zmiany-w-komunikacji?page=%d"
-	news := getNewsStubs(seedUrl)
-	fillOutNewsStubs(news)
+
+	timeout := time.Duration(5 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	news := getNewsStubs(client, seedUrl)
+	fillOutNewsStubs(client, news)
 	insertNewsIntoDB(db, news)
 }

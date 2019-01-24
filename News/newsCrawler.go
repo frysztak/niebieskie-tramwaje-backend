@@ -2,7 +2,6 @@ package News
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"log"
 	"math/rand"
 	"net/http"
@@ -10,6 +9,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 func getSleepTime() time.Duration {
@@ -17,7 +18,7 @@ func getSleepTime() time.Duration {
 	return 500 + time.Duration(r)*time.Millisecond
 }
 
-func crawlNews(newsStub *NewsItem, chFinished chan bool) {
+func crawlNews(client http.Client, newsStub *NewsItem, chFinished chan bool) {
 	defer func() {
 		// Notify that we're done after this function
 		chFinished <- true
@@ -28,7 +29,7 @@ func crawlNews(newsStub *NewsItem, chFinished chan bool) {
 	// Request the HTML page.
 	log.Printf("Getting url %s", url)
 	time.Sleep(getSleepTime())
-	res, err := http.Get(url)
+	res, err := client.Get(url)
 	if err != nil {
 		log.Print(err)
 		return
@@ -132,13 +133,13 @@ func replaceAtIndex(in string, r rune, i int) string {
 	return string(out)
 }
 
-func fillOutNewsStubs(newsStubs []NewsItem) {
+func fillOutNewsStubs(client http.Client, newsStubs []NewsItem) {
 	// Channels
 	chFinished := make(chan bool)
 
 	// Kick off the crawl process (concurrently)
 	for idx, _ := range newsStubs {
-		go crawlNews(&newsStubs[idx], chFinished)
+		go crawlNews(client, &newsStubs[idx], chFinished)
 	}
 
 	// Subscribe to both channels

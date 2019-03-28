@@ -7,6 +7,8 @@ Group=mpk
 Type=simple
 Restart=always
 RestartSec=5s
+Environment="https_proxy=http://localhost:9999"
+Environment="http_proxy=http://localhost:9999"
 ExecStart=/home/sebastian/MPK-API
 
 [Install]

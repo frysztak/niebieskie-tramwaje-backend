@@ -2,4 +2,4 @@
 
 Backend for https://github.com/frysztak/niebieskie-tramwaje.
 
-Connects to Neo4j and exposes REST API.
+Includes MPK news scraper. Handles two databases: Neo4j for transit data and SQLite for MPK news. Exposes REST API.
